@@ -65,27 +65,27 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MCP-01 | TBD | Pending |
-| MCP-02 | TBD | Pending |
-| MCP-03 | TBD | Pending |
-| WORK-01 | TBD | Pending |
-| WORK-02 | TBD | Pending |
-| WORK-03 | TBD | Pending |
-| WORK-04 | TBD | Pending |
-| SEM-01 | TBD | Pending |
-| SEM-02 | TBD | Pending |
-| SEM-03 | TBD | Pending |
-| SEM-04 | TBD | Pending |
-| SEM-05 | TBD | Pending |
-| RES-01 | TBD | Pending |
-| RES-02 | TBD | Pending |
-| RES-03 | TBD | Pending |
+| MCP-01 | Phase 1 | Pending |
+| MCP-02 | Phase 1 | Pending |
+| MCP-03 | Phase 3 | Pending |
+| WORK-01 | Phase 1 | Pending |
+| WORK-02 | Phase 1 | Pending |
+| WORK-03 | Phase 1 | Pending |
+| WORK-04 | Phase 1 | Pending |
+| SEM-01 | Phase 2 | Pending |
+| SEM-02 | Phase 3 | Pending |
+| SEM-03 | Phase 2 | Pending |
+| SEM-04 | Phase 2 | Pending |
+| SEM-05 | Phase 3 | Pending |
+| RES-01 | Phase 2 | Pending |
+| RES-02 | Phase 3 | Pending |
+| RES-03 | Phase 1 | Pending |
 
 **Coverage:**
 - v1 requirements: 15 total
-- Mapped to phases: 0
-- Unmapped: 15
+- Mapped to phases: 15
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-12*
-*Last updated: 2026-03-12 after initial definition*
+*Last updated: 2026-03-12 after roadmap creation*
