@@ -1,7 +1,14 @@
 import { createDiagnostic, type Diagnostic } from "../diagnostics/diagnosticFactory.js";
-import type { SymbolKind, SymbolMatch } from "../queries/queryCatalog.js";
+import type { SymbolKind } from "../queries/queryCatalog.js";
 import type { ServerContext } from "../server/serverContext.js";
+import {
+  filterSearchableFiles,
+  matchesDefinitionFilters,
+  normalizeDefinitionFilters,
+} from "./definitionFilters.js";
 import { collectFileDefinitions } from "./definitionPipeline.js";
+import type { DefinitionFilters, DefinitionMatch } from "./definitionTypes.js";
+import { normalizeDefinitionMatches } from "./normalizeDefinitionMatch.js";
 
 export interface DefinitionSymbolDescriptor {
   name: string;
@@ -23,7 +30,8 @@ export interface ResolveDefinitionRequest {
 }
 
 export interface ResolveDefinitionResult {
-  match: SymbolMatch | null;
+  filters: DefinitionFilters;
+  match: DefinitionMatch | null;
   diagnostic: Diagnostic | null;
   diagnostics: Diagnostic[];
   searchedFiles: number;
@@ -33,6 +41,12 @@ export async function resolveDefinition(
   context: ServerContext,
   request: ResolveDefinitionRequest,
 ): Promise<ResolveDefinitionResult> {
+  const emptyFilters: DefinitionFilters = {
+    language: null,
+    pathPrefix: null,
+    symbolKinds: [],
+  };
+
   if (!context.workspace.root) {
     const diagnostic = createDiagnostic({
       code: "workspace_not_set",
@@ -42,6 +56,7 @@ export async function resolveDefinition(
     });
 
     return {
+      filters: emptyFilters,
       match: null,
       diagnostic,
       diagnostics: [diagnostic],
@@ -59,6 +74,7 @@ export async function resolveDefinition(
     });
 
     return {
+      filters: emptyFilters,
       match: null,
       diagnostic,
       diagnostics: [diagnostic],
@@ -66,7 +82,17 @@ export async function resolveDefinition(
     };
   }
 
-  const normalizedName = target?.name.trim().toLowerCase() ?? "";
+  const normalizedName = target.name.trim().toLowerCase();
+  const normalizedFiltersResult = normalizeDefinitionFilters({
+    workspaceRoot: context.workspace.root,
+    languageRegistry: context.languageRegistry,
+    input: {
+      language: target.languageId,
+      pathPrefix: target.relativePath,
+      symbolKinds: target.kind ? [target.kind] : [],
+    },
+  });
+
   if (normalizedName.length === 0) {
     const diagnostic = createDiagnostic({
       code: "definition_not_found",
@@ -76,6 +102,7 @@ export async function resolveDefinition(
     });
 
     return {
+      filters: normalizedFiltersResult.filters,
       match: null,
       diagnostic,
       diagnostics: [diagnostic],
@@ -83,21 +110,20 @@ export async function resolveDefinition(
     };
   }
 
-  const filesToSearch = context.workspace.searchableFiles.filter((file) => {
-    if (target.languageId && file.languageId !== target.languageId) {
-      return false;
-    }
+  if (normalizedFiltersResult.diagnostic) {
+    return {
+      filters: normalizedFiltersResult.filters,
+      match: null,
+      diagnostic: normalizedFiltersResult.diagnostic,
+      diagnostics: [normalizedFiltersResult.diagnostic],
+      searchedFiles: 0,
+    };
+  }
 
-    if (target.relativePath && file.relativePath !== target.relativePath) {
-      return false;
-    }
-
-    return true;
-  });
-
-  const orderedFiles = prioritizeSearchableFiles(filesToSearch, target.relativePath);
+  const filesToSearch = filterSearchableFiles(context.workspace.searchableFiles, normalizedFiltersResult.filters);
+  const orderedFiles = prioritizeSearchableFiles(filesToSearch, normalizedFiltersResult.filters.pathPrefix);
   const diagnostics: Diagnostic[] = [];
-  const matches: SymbolMatch[] = [];
+  const matches: DefinitionMatch[] = [];
   let searchedFiles = 0;
 
   for (const file of orderedFiles) {
@@ -105,22 +131,19 @@ export async function resolveDefinition(
     const result = await collectFileDefinitions(context, file);
     diagnostics.push(...result.diagnostics);
 
-    matches.push(...result.definitions.filter((definition) => {
+    matches.push(...normalizeDefinitionMatches(result.definitions).filter((definition) => {
       if (definition.name.toLowerCase() !== normalizedName) {
         return false;
       }
 
-      if (target.kind && definition.kind !== target.kind) {
-        return false;
-      }
-
-      return true;
+      return matchesDefinitionFilters(definition, normalizedFiltersResult.filters);
     }));
   }
 
-  const match = rankDefinitionMatches(matches, target)[0] ?? null;
+  const match = rankDefinitionMatches(matches, target, normalizedFiltersResult.filters)[0] ?? null;
   if (match) {
     return {
+      filters: normalizedFiltersResult.filters,
       match,
       diagnostic: null,
       diagnostics,
@@ -133,13 +156,14 @@ export async function resolveDefinition(
     message: `No definition match was found for ${target.name}.`,
     reason: "The active workspace snapshot does not contain a matching parsed definition.",
     nextStep: "Check the lookup spelling, adjust the workspace snapshot, or broaden the search criteria.",
-    ...(target.relativePath ? { relativePath: target.relativePath } : {}),
-    ...(target.languageId ? { languageId: target.languageId } : {}),
+    ...(normalizedFiltersResult.filters.pathPrefix ? { relativePath: normalizedFiltersResult.filters.pathPrefix } : {}),
+    ...(normalizedFiltersResult.filters.language ? { languageId: normalizedFiltersResult.filters.language } : {}),
   });
 
   diagnostics.push(diagnostic);
 
   return {
+    filters: normalizedFiltersResult.filters,
     match: null,
     diagnostic,
     diagnostics,
@@ -149,12 +173,12 @@ export async function resolveDefinition(
 
 function prioritizeSearchableFiles(
   files: ServerContext["workspace"]["searchableFiles"],
-  relativePath?: string,
+  preferredPathPrefix: string | null,
 ) {
   return [...files].sort((left, right) => {
-    if (relativePath) {
-      const leftPriority = left.relativePath === relativePath ? 0 : 1;
-      const rightPriority = right.relativePath === relativePath ? 0 : 1;
+    if (preferredPathPrefix) {
+      const leftPriority = left.relativePath === preferredPathPrefix ? 0 : 1;
+      const rightPriority = right.relativePath === preferredPathPrefix ? 0 : 1;
       if (leftPriority !== rightPriority) {
         return leftPriority - rightPriority;
       }
@@ -165,12 +189,13 @@ function prioritizeSearchableFiles(
 }
 
 function rankDefinitionMatches(
-  matches: SymbolMatch[],
+  matches: DefinitionMatch[],
   target: DefinitionLookupRequest | DefinitionSymbolDescriptor,
-): SymbolMatch[] {
+  filters: DefinitionFilters,
+): DefinitionMatch[] {
   return [...matches].sort((left, right) => {
-    const leftScore = scoreDefinition(left, target);
-    const rightScore = scoreDefinition(right, target);
+    const leftScore = scoreDefinition(left, target, filters);
+    const rightScore = scoreDefinition(right, target, filters);
     if (leftScore !== rightScore) {
       return leftScore - rightScore;
     }
@@ -184,16 +209,17 @@ function rankDefinitionMatches(
 }
 
 function scoreDefinition(
-  definition: SymbolMatch,
+  definition: DefinitionMatch,
   target: DefinitionLookupRequest | DefinitionSymbolDescriptor,
+  filters: DefinitionFilters,
 ): number {
   let score = 0;
 
-  if (target.relativePath && definition.relativePath !== target.relativePath) {
+  if (filters.pathPrefix && definition.relativePath !== filters.pathPrefix) {
     score += 10;
   }
 
-  if (target.languageId && definition.languageId !== target.languageId) {
+  if (filters.language && definition.languageId !== filters.language) {
     score += 5;
   }
 

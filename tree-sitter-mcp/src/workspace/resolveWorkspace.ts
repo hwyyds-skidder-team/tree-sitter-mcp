@@ -35,9 +35,14 @@ export function isPathInsideWorkspace(root: string, candidatePath: string): bool
 }
 
 export function resolveWorkspacePath(root: string, targetPath: string): string {
-  const candidatePath = path.isAbsolute(targetPath)
-    ? normalizeAbsolutePath(targetPath)
-    : normalizeAbsolutePath(path.join(root, targetPath));
+  const trimmedPath = targetPath.trim();
+  if (trimmedPath.length === 0) {
+    throw new Error("Path is required.");
+  }
+
+  const candidatePath = isAbsolutePathLike(trimmedPath)
+    ? normalizeAbsolutePathLike(trimmedPath)
+    : normalizeAbsolutePath(path.join(root, ...splitPathSegments(trimmedPath)));
 
   if (!isPathInsideWorkspace(root, candidatePath)) {
     throw new Error(`Path escapes the configured workspace root: ${targetPath}`);
@@ -46,7 +51,65 @@ export function resolveWorkspacePath(root: string, targetPath: string): string {
   return candidatePath;
 }
 
+export function normalizeWorkspaceRelativePath(root: string, targetPath: string): string | null {
+  const relativePath = relativeToWorkspace(root, resolveWorkspacePath(root, targetPath));
+  return relativePath === "." ? null : relativePath;
+}
+
 export function relativeToWorkspace(root: string, targetPath: string): string {
-  const relativePath = path.relative(root, targetPath).split(path.sep).join("/");
-  return relativePath.length === 0 ? "." : relativePath;
+  const relativePath = path.relative(normalizeAbsolutePath(root), normalizeAbsolutePath(targetPath));
+  const normalizedPath = normalizeRelativePath(relativePath);
+  return normalizedPath.length === 0 ? "." : normalizedPath;
+}
+
+export function normalizeRelativePath(targetPath: string): string {
+  return targetPath
+    .trim()
+    .replace(/\\/g, "/")
+    .replace(/\/+/g, "/")
+    .replace(/^\.\//, "")
+    .replace(/\/$/, "");
+}
+
+export function relativePathMatchesPrefix(relativePath: string, prefix: string): boolean {
+  const normalizedRelativePath = normalizeRelativePath(relativePath);
+  const normalizedPrefix = normalizeRelativePath(prefix);
+
+  if (normalizedPrefix.length === 0) {
+    return true;
+  }
+
+  return normalizedRelativePath === normalizedPrefix
+    || normalizedRelativePath.startsWith(`${normalizedPrefix}/`);
+}
+
+function splitPathSegments(targetPath: string): string[] {
+  const normalizedPath = normalizeRelativePath(targetPath);
+  if (normalizedPath.length === 0) {
+    return [];
+  }
+
+  return normalizedPath.split("/").filter((segment) => segment.length > 0);
+}
+
+function isAbsolutePathLike(targetPath: string): boolean {
+  return path.isAbsolute(targetPath)
+    || path.win32.isAbsolute(targetPath)
+    || path.posix.isAbsolute(targetPath);
+}
+
+function normalizeAbsolutePathLike(targetPath: string): string {
+  if (path.isAbsolute(targetPath)) {
+    return normalizeAbsolutePath(targetPath);
+  }
+
+  if (path.win32.isAbsolute(targetPath)) {
+    return path.win32.normalize(targetPath);
+  }
+
+  if (path.posix.isAbsolute(targetPath)) {
+    return path.posix.normalize(targetPath);
+  }
+
+  return normalizeAbsolutePath(targetPath);
 }
