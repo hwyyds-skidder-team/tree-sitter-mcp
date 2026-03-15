@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { SupportedLanguageSchema } from "../languages/languageRegistry.js";
+import { listDefinitionQueryTypes } from "../queries/definitionQueryCatalog.js";
 import type { ServerContext } from "../server/serverContext.js";
 import { summarizeWorkspace } from "../workspace/workspaceState.js";
 
@@ -25,6 +26,8 @@ const TOOL_NAMES = [
   "get_health",
   "list_file_symbols",
   "search_workspace_symbols",
+  "search_definitions",
+  "resolve_definition",
 ];
 
 export function registerGetCapabilitiesTool(server: McpServer, context: ServerContext): void {
@@ -42,10 +45,14 @@ export function registerGetCapabilitiesTool(server: McpServer, context: ServerCo
       },
     },
     async () => {
+      const supportedQueryTypes = [...new Set([
+        ...context.queryTypes,
+        ...listDefinitionQueryTypes(),
+      ])];
       const payload = {
         parserMode: context.parserMode,
         supportedLanguages: context.languageRegistry.list(),
-        supportedQueryTypes: [...context.queryTypes],
+        supportedQueryTypes,
         toolNames: [...TOOL_NAMES],
         workspace: summarizeWorkspace(context.workspace),
       };
@@ -54,7 +61,7 @@ export function registerGetCapabilitiesTool(server: McpServer, context: ServerCo
         content: [
           {
             type: "text" as const,
-            text: `Parser mode ${payload.parserMode}; ${payload.supportedLanguages.length} languages; ${payload.supportedQueryTypes.length} semantic query types.`,
+            text: `Parser mode ${payload.parserMode}; ${payload.supportedLanguages.length} languages; ${payload.supportedQueryTypes.length} semantic query types including definition search and resolution.`,
           },
         ],
         structuredContent: payload,

@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { createDiagnostic, DiagnosticSchema } from "../diagnostics/diagnosticFactory.js";
 import { SupportedLanguageSchema } from "../languages/languageRegistry.js";
+import { listDefinitionQueryTypes } from "../queries/definitionQueryCatalog.js";
 import type { ServerContext } from "../server/serverContext.js";
 import {
   SearchableFileRecordSchema,
@@ -41,6 +42,10 @@ export function registerGetHealthTool(server: McpServer, context: ServerContext)
       },
     },
     async () => {
+      const supportedQueryTypes = [...new Set([
+        ...context.queryTypes,
+        ...listDefinitionQueryTypes(),
+      ])];
       const diagnostics = context.workspace.root
         ? []
         : [
@@ -57,7 +62,7 @@ export function registerGetHealthTool(server: McpServer, context: ServerContext)
         status: context.workspace.root ? ("ready" as const) : ("workspace_not_set" as const),
         parserMode: context.parserMode,
         supportedLanguages: context.languageRegistry.list(),
-        supportedQueryTypes: [...context.queryTypes],
+        supportedQueryTypes,
         workspace: summarizeWorkspace(context.workspace),
         searchableFilesSample: context.workspace.searchableFiles.slice(0, 20),
         unsupportedFilesSample: context.workspace.unsupportedFiles.slice(0, 20),
@@ -69,8 +74,8 @@ export function registerGetHealthTool(server: McpServer, context: ServerContext)
           {
             type: "text" as const,
             text: payload.status === "ready"
-              ? `Workspace ready at ${payload.workspace.root}; ${payload.workspace.searchableFileCount} supported files discovered.`
-              : "Workspace not set; semantic queries will return actionable diagnostics until set_workspace runs.",
+              ? `Workspace ready at ${payload.workspace.root}; ${payload.workspace.searchableFileCount} supported files discovered; definition search remains on-demand and read-only.`
+              : "Workspace not set; semantic queries, including definition search, will return actionable diagnostics until set_workspace runs.",
           },
         ],
         structuredContent: payload,

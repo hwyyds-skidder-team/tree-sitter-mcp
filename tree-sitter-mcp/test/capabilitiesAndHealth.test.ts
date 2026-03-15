@@ -46,6 +46,7 @@ test("capabilities and health expose parser mode, languages, workspace root, and
       parserMode: string;
       supportedLanguages: Array<{ id: string }>;
       supportedQueryTypes: string[];
+      toolNames: string[];
       workspace: { root: string | null };
     };
     assert.equal(capabilities.parserMode, "on_demand");
@@ -55,7 +56,14 @@ test("capabilities and health expose parser mode, languages, workspace root, and
       "tsx",
       "typescript",
     ]);
-    assert.deepEqual(capabilities.supportedQueryTypes, ["file_symbols", "workspace_symbols"]);
+    assert.deepEqual(capabilities.supportedQueryTypes, [
+      "file_symbols",
+      "workspace_symbols",
+      "definition_search",
+      "definition_resolve",
+    ]);
+    assert.ok(capabilities.toolNames.includes("search_definitions"));
+    assert.ok(capabilities.toolNames.includes("resolve_definition"));
     assert.equal(capabilities.workspace.root, null);
 
     const initialHealthResult = await client.callTool({
@@ -64,9 +72,16 @@ test("capabilities and health expose parser mode, languages, workspace root, and
     });
     const initialHealth = initialHealthResult.structuredContent as {
       status: string;
+      supportedQueryTypes: string[];
       diagnostics: Array<{ code: string }>;
     };
     assert.equal(initialHealth.status, "workspace_not_set");
+    assert.deepEqual(initialHealth.supportedQueryTypes, [
+      "file_symbols",
+      "workspace_symbols",
+      "definition_search",
+      "definition_resolve",
+    ]);
     assert.equal(initialHealth.diagnostics[0]?.code, "workspace_not_set");
 
     const setWorkspaceResult = await client.callTool({
@@ -90,10 +105,17 @@ test("capabilities and health expose parser mode, languages, workspace root, and
     });
     const readyHealth = readyHealthResult.structuredContent as {
       status: string;
+      supportedQueryTypes: string[];
       workspace: { root: string | null; searchableFileCount: number; unsupportedFileCount: number };
       unsupportedFilesSample: Array<{ relativePath: string }>;
     };
     assert.equal(readyHealth.status, "ready");
+    assert.deepEqual(readyHealth.supportedQueryTypes, [
+      "file_symbols",
+      "workspace_symbols",
+      "definition_search",
+      "definition_resolve",
+    ]);
     assert.equal(readyHealth.workspace.root, workspaceRoot);
     assert.equal(readyHealth.workspace.searchableFileCount, 1);
     assert.equal(readyHealth.workspace.unsupportedFileCount, 1);
