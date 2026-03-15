@@ -20,7 +20,7 @@ export const SymbolMatchSchema = z.object({
 export type SymbolKind = z.infer<typeof SymbolKindSchema>;
 export type SymbolMatch = z.infer<typeof SymbolMatchSchema>;
 
-interface QueryDefinition {
+export interface QueryDefinition {
   source: string;
   classify(definitionNode: Parser.SyntaxNode, nameNode: Parser.SyntaxNode): SymbolKind;
 }
@@ -140,7 +140,7 @@ export function extractSymbols(input: ExtractSymbolsInput): SymbolMatch[] {
   });
 }
 
-function getCompiledQuery(language: RegisteredLanguage, definition: QueryDefinition): Parser.Query {
+export function getCompiledQuery(language: RegisteredLanguage, definition: QueryDefinition): Parser.Query {
   const cacheKey = `${language.id}:${definition.source}`;
   const cachedQuery = queryCache.get(cacheKey);
   if (cachedQuery) {
@@ -152,7 +152,7 @@ function getCompiledQuery(language: RegisteredLanguage, definition: QueryDefinit
   return compiledQuery;
 }
 
-function classifySymbolKind(
+export function classifySymbolKind(
   definitionNode: Parser.SyntaxNode,
   nameNode: Parser.SyntaxNode,
 ): SymbolKind {
@@ -174,7 +174,7 @@ function classifySymbolKind(
   }
 }
 
-function hasAncestor(node: Parser.SyntaxNode, types: string[]): boolean {
+export function hasAncestor(node: Parser.SyntaxNode, types: string[]): boolean {
   let current: Parser.SyntaxNode | null = node.parent;
   while (current) {
     if (types.includes(current.type)) {
@@ -185,7 +185,7 @@ function hasAncestor(node: Parser.SyntaxNode, types: string[]): boolean {
   return false;
 }
 
-function findContainerName(node: Parser.SyntaxNode): string | null {
+export function findContainerName(node: Parser.SyntaxNode): string | null {
   let current: Parser.SyntaxNode | null = node.parent;
   while (current) {
     switch (current.type) {
@@ -201,7 +201,7 @@ function findContainerName(node: Parser.SyntaxNode): string | null {
   return null;
 }
 
-function createSnippet(source: string, node: Parser.SyntaxNode): string {
+export function createSnippet(source: string, node: Parser.SyntaxNode): string {
   const rawSnippet = source.slice(node.startIndex, node.endIndex).trim().replace(/\s+/g, " ");
   return rawSnippet.length > 180 ? `${rawSnippet.slice(0, 177)}...` : rawSnippet;
 }
