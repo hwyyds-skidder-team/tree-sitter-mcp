@@ -4,6 +4,9 @@
   "description": "AI-agent-first MCP server for semantic code search powered by Tree-sitter.",
   "type": "module",
   "main": "dist/index.js",
+  "bin": {
+    "tree-sitter-mcp": "./dist/index.js"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsx src/index.ts",

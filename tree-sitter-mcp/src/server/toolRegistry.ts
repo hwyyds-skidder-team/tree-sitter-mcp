@@ -5,6 +5,7 @@ import { registerGetHealthTool } from "../tools/getHealthTool.js";
 import { registerListFileSymbolsTool } from "../tools/listFileSymbolsTool.js";
 import { registerResolveDefinitionTool } from "../tools/resolveDefinitionTool.js";
 import { registerSearchDefinitionsTool } from "../tools/searchDefinitionsTool.js";
+import { registerSearchReferencesTool } from "../tools/searchReferencesTool.js";
 import { registerSearchWorkspaceSymbolsTool } from "../tools/searchWorkspaceSymbolsTool.js";
 import { registerSetWorkspaceTool } from "../tools/setWorkspaceTool.js";
 import type { ServerContext } from "./serverContext.js";
@@ -62,4 +63,5 @@ export function registerTools(server: McpServer, context: ServerContext): void {
   registerSearchWorkspaceSymbolsTool(server, context);
   registerSearchDefinitionsTool(server, context);
   registerResolveDefinitionTool(server, context);
+  registerSearchReferencesTool(server, context);
 }

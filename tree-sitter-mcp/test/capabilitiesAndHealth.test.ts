@@ -61,9 +61,12 @@ test("capabilities and health expose parser mode, languages, workspace root, and
       "workspace_symbols",
       "definition_search",
       "definition_resolve",
+      "reference_search",
+      "call_site_search",
     ]);
     assert.ok(capabilities.toolNames.includes("search_definitions"));
     assert.ok(capabilities.toolNames.includes("resolve_definition"));
+    assert.ok(capabilities.toolNames.includes("search_references"));
     assert.equal(capabilities.workspace.root, null);
 
     const initialHealthResult = await client.callTool({
@@ -81,6 +84,8 @@ test("capabilities and health expose parser mode, languages, workspace root, and
       "workspace_symbols",
       "definition_search",
       "definition_resolve",
+      "reference_search",
+      "call_site_search",
     ]);
     assert.equal(initialHealth.diagnostics[0]?.code, "workspace_not_set");
 
@@ -115,6 +120,8 @@ test("capabilities and health expose parser mode, languages, workspace root, and
       "workspace_symbols",
       "definition_search",
       "definition_resolve",
+      "reference_search",
+      "call_site_search",
     ]);
     assert.equal(readyHealth.workspace.root, workspaceRoot);
     assert.equal(readyHealth.workspace.searchableFileCount, 1);

@@ -1,11 +1,17 @@
 import JavaScript from "tree-sitter-javascript";
 import Python from "tree-sitter-python";
 import TypeScript from "tree-sitter-typescript";
+import { listDefinitionQueryTypes } from "../queries/definitionQueryCatalog.js";
 import { listSupportedQueryTypes } from "../queries/queryCatalog.js";
+import { listReferenceQueryTypes } from "../queries/referenceQueryCatalog.js";
 import type { LanguageRegistry } from "./languageRegistry.js";
 
 export function registerBuiltinGrammars(registry: LanguageRegistry): void {
-  const queryTypes = listSupportedQueryTypes();
+  const queryTypes = [...new Set([
+    ...listSupportedQueryTypes(),
+    ...listDefinitionQueryTypes(),
+    ...listReferenceQueryTypes(),
+  ])];
 
   registry.register({
     id: "javascript",

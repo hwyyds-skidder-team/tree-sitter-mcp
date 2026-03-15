@@ -31,7 +31,7 @@ test("compiled server bootstraps over stdio and lists tools", async () => {
 
     const listed = await client.listTools();
     assert.ok(Array.isArray(listed.tools));
-    assert.ok(listed.tools.length >= 6);
+    assert.ok(listed.tools.length >= 9);
 
     const toolNames = new Set(listed.tools.map((tool) => tool.name));
     assert.ok(toolNames.has("tree_sitter_get_server_info"));
@@ -40,6 +40,9 @@ test("compiled server bootstraps over stdio and lists tools", async () => {
     assert.ok(toolNames.has("get_health"));
     assert.ok(toolNames.has("list_file_symbols"));
     assert.ok(toolNames.has("search_workspace_symbols"));
+    assert.ok(toolNames.has("search_definitions"));
+    assert.ok(toolNames.has("resolve_definition"));
+    assert.ok(toolNames.has("search_references"));
 
     const callResult = await client.callTool({
       name: "tree_sitter_get_server_info",
