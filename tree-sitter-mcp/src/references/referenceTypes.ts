@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ContextSnippetSchema, EnclosingContextSchema } from "../context/contextTypes.js";
 import { SourceRangeSchema } from "../diagnostics/diagnosticFactory.js";
 import { SymbolKindSchema } from "../queries/queryCatalog.js";
 
@@ -15,6 +16,8 @@ export const ReferenceMatchSchema = z.object({
   selectionRange: SourceRangeSchema,
   containerName: z.string().nullable(),
   snippet: z.string(),
+  enclosingContext: EnclosingContextSchema.nullable().optional(),
+  contextSnippet: ContextSnippetSchema.nullable().optional(),
 });
 
 export const ReferenceSearchTargetSchema = z.object({
