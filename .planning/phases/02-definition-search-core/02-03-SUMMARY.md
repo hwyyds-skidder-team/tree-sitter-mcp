@@ -54,7 +54,7 @@ completed: 2026-03-15
 
 ## Task Commits
 
-1. **Definition MCP tool wiring and end-to-end coverage** - `PENDING` (feat)
+1. **Definition MCP tool wiring and end-to-end coverage** - `a475b99` (feat)
 
 ## Files Created/Modified
 - `tree-sitter-mcp/src/tools/searchDefinitionsTool.ts` - read-only definition search MCP tool

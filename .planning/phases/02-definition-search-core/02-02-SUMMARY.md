@@ -55,7 +55,7 @@ completed: 2026-03-15
 
 ## Task Commits
 
-1. **Definition payload normalization and filter reuse** - `77a87e9` (feat)
+1. **Definition payload normalization and filter reuse** - `640b457` (feat)
 
 ## Files Created/Modified
 - `tree-sitter-mcp/src/definitions/definitionTypes.ts` - shared definition schemas and filter types

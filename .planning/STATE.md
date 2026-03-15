@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 2
-current_phase_name: Definition Search Core
+current_phase: 3
+current_phase_name: Reference Search and Agent-Ready Results
 current_plan: 0
 status: ready
-stopped_at: Phase 2 planned and verified; next step is $gsd-execute-phase 2.
-last_updated: "2026-03-15T10:05:00.000Z"
-last_activity: 2026-03-15 - Phase 2 plans created and verified.
+stopped_at: Phase 2 complete and verified; next step is $gsd-plan-phase 3.
+last_updated: "2026-03-15T10:33:07.000Z"
+last_activity: 2026-03-15 - Phase 2 completed and verified.
 progress:
   total_phases: 3
-  completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
-  percent: 33
+  completed_phases: 2
+  total_plans: 6
+  completed_plans: 6
+  percent: 67
 ---
 
 # Project State
@@ -24,18 +24,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-12)
 
 **Core Value:** An AI agent can quickly find the right code symbols, definitions, references, and related source regions in a workspace without relying on brittle grep-style text search.
-**Current Focus:** Phase 2 - Definition Search Core
+**Current Focus:** Phase 3 - Reference Search and Agent-Ready Results
 
 ## Current Position
 
-**Current Phase:** 2
-**Current Phase Name:** Definition Search Core
+**Current Phase:** 3
+**Current Phase Name:** Reference Search and Agent-Ready Results
 **Total Phases:** 3
 **Current Plan:** 0
 **Total Plans in Phase:** 3
-**Status:** Ready to execute
-**Last Activity:** 2026-03-15 - Phase 2 plans created and verified.
-**Progress:** [##---] 33%
+**Status:** Ready to plan
+**Last Activity:** 2026-03-15 - Phase 2 completed and verified.
+**Progress:** [###--] 67%
 
 ## Decisions Made
 
@@ -48,7 +48,8 @@ See: .planning/PROJECT.md (updated 2026-03-12)
 | Phase 1 | Expose capabilities and health as explicit MCP tools | Makes the server debuggable before deeper semantic workflows exist |
 | Phase 1 | Return structured diagnostics for unsupported files and parse failures | Prevents silent skips and keeps agent workflows actionable |
 | Phase 2 | Keep definition search layered on top of the Phase 1 on-demand parser and workspace snapshot | Preserves the no-index, local-only architecture while adding definition workflows |
-| Phase 2 | Disable Nyquist validation in planning config | User chose to plan directly without research/VALIDATION artifacts |
+| Phase 2 | Normalize definition payloads through a dedicated schema and shared filter layer | Keeps tool-facing metadata and narrowing semantics consistent across languages |
+| Phase 2 | Expose `search_definitions` and `resolve_definition` as read-only stdio tools | Completes the user-facing definition workflow without introducing writes or persistent indexing |
 
 ## Pending Todos
 
@@ -56,10 +57,10 @@ None yet.
 
 ## Blockers
 
-None yet.
+None.
 
 ## Session
 
-**Last Date:** 2026-03-15 18:05
-**Stopped At:** Phase 2 planned and verified; next step is $gsd-execute-phase 2.
-**Resume File:** .planning/phases/02-definition-search-core/02-01-PLAN.md
+**Last Date:** 2026-03-15 18:33
+**Stopped At:** Phase 2 complete and verified; next step is `$gsd-plan-phase 3`.
+**Resume File:** .planning/ROADMAP.md

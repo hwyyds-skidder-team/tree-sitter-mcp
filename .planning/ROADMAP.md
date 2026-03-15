@@ -11,7 +11,7 @@ Build `tree-sitter-mcp` as a standalone, AI-agent-first MCP server that starts w
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
 - [x] **Phase 1: Server Foundation and Workspace Discovery** - Boot the standalone MCP server and make it understand a local workspace. (completed 2026-03-15)
-- [ ] **Phase 2: Definition Search Core** - Deliver precise definition lookup and filtered symbol discovery on top of Tree-sitter parsing.
+- [x] **Phase 2: Definition Search Core** - Deliver precise definition lookup and filtered symbol discovery on top of Tree-sitter parsing. (completed 2026-03-15)
 - [ ] **Phase 3: Reference Search and Agent-Ready Results** - Complete the semantic retrieval loop with references, context, and paginated structured output.
 
 ## Phase Details
@@ -44,9 +44,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 02-01: Build the on-demand parse and query pipeline for definition extraction.
-- [ ] 02-02: Normalize symbol metadata, source ranges, and filter handling across languages.
-- [ ] 02-03: Expose definition-search MCP tools with read-only semantics and structured payloads.
+- [x] 02-01: Build the on-demand parse and query pipeline for definition extraction.
+- [x] 02-02: Normalize symbol metadata, source ranges, and filter handling across languages.
+- [x] 02-03: Expose definition-search MCP tools with read-only semantics and structured payloads.
 
 ### Phase 3: Reference Search and Agent-Ready Results
 **Goal**: Complete the v1 semantic-search experience with reference lookup, surrounding syntax context, pagination, and MCP responses tuned for AI agents.
@@ -72,5 +72,5 @@ Phases execute in numeric order: 1 -> 2 -> 3
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Server Foundation and Workspace Discovery | 3/3 | Complete   | 2026-03-15 |
-| 2. Definition Search Core | 0/3 | Not started | - |
+| 2. Definition Search Core | 3/3 | Complete | 2026-03-15 |
 | 3. Reference Search and Agent-Ready Results | 0/3 | Not started | - |

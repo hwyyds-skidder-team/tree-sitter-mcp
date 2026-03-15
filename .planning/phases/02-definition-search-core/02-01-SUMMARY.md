@@ -55,7 +55,7 @@ completed: 2026-03-15
 
 ## Task Commits
 
-1. **Definition query catalog, extraction pipeline, and lookup services** - `PENDING` (feat)
+1. **Definition query catalog, extraction pipeline, and lookup services** - `ba14df3` (feat)
 
 ## Files Created/Modified
 - `tree-sitter-mcp/src/queries/definitionQueryCatalog.ts` - definition-oriented Tree-sitter query catalog
@@ -81,7 +81,7 @@ completed: 2026-03-15
 - **Fix:** Added `definition_not_found` to the shared diagnostic factory.
 - **Files modified:** `tree-sitter-mcp/src/diagnostics/diagnosticFactory.ts`
 - **Verification:** `cd tree-sitter-mcp && npm test -- --test-reporter=spec`
-- **Committed in:** `PENDING`
+- **Committed in:** `ba14df3`
 
 ---
 
