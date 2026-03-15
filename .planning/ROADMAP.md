@@ -10,7 +10,7 @@ Build `tree-sitter-mcp` as a standalone, AI-agent-first MCP server that starts w
 - Integer phases (1, 2, 3): Planned milestone work
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
-- [ ] **Phase 1: Server Foundation and Workspace Discovery** - Boot the standalone MCP server and make it understand a local workspace.
+- [x] **Phase 1: Server Foundation and Workspace Discovery** - Boot the standalone MCP server and make it understand a local workspace. (completed 2026-03-15)
 - [ ] **Phase 2: Definition Search Core** - Deliver precise definition lookup and filtered symbol discovery on top of Tree-sitter parsing.
 - [ ] **Phase 3: Reference Search and Agent-Ready Results** - Complete the semantic retrieval loop with references, context, and paginated structured output.
 
@@ -28,9 +28,9 @@ Build `tree-sitter-mcp` as a standalone, AI-agent-first MCP server that starts w
 **Plans**: 3 plans
 
 Plans:
-- [ ] 01-01: Scaffold the TypeScript MCP server package, runtime configuration, and SDK adapter boundary in `tree-sitter-mcp`.
-- [ ] 01-02: Implement workspace discovery, ignore/exclusion rules, and grammar/language registration.
-- [ ] 01-03: Add capability/health tooling plus parse and unsupported-language diagnostics.
+- [x] 01-01: Scaffold the TypeScript MCP server package, runtime configuration, and SDK adapter boundary in `tree-sitter-mcp`.
+- [x] 01-02: Implement workspace discovery, ignore/exclusion rules, and grammar/language registration.
+- [x] 01-03: Add capability/health tooling plus parse and unsupported-language diagnostics.
 
 ### Phase 2: Definition Search Core
 **Goal**: Turn Tree-sitter parses into reliable definition-oriented semantic search tools with precise locations and useful filters.
@@ -71,6 +71,6 @@ Phases execute in numeric order: 1 -> 2 -> 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Server Foundation and Workspace Discovery | 0/3 | Not started | - |
+| 1. Server Foundation and Workspace Discovery | 3/3 | Complete   | 2026-03-15 |
 | 2. Definition Search Core | 0/3 | Not started | - |
 | 3. Reference Search and Agent-Ready Results | 0/3 | Not started | - |

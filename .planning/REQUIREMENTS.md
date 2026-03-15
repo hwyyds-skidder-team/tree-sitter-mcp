@@ -7,16 +7,16 @@
 
 ### MCP Interface
 
-- [ ] **MCP-01**: User can run `tree-sitter-mcp` as a standalone MCP server from the dedicated `tree-sitter-mcp` directory.
-- [ ] **MCP-02**: User can call read-only semantic code search tools from an MCP client over local transport without setting up a persistent index first.
+- [x] **MCP-01**: User can run `tree-sitter-mcp` as a standalone MCP server from the dedicated `tree-sitter-mcp` directory.
+- [x] **MCP-02**: User can call read-only semantic code search tools from an MCP client over local transport without setting up a persistent index first.
 - [ ] **MCP-03**: User receives structured tool results that include machine-readable fields plus concise text summaries suitable for AI-agent workflows.
 
 ### Workspace Discovery
 
-- [ ] **WORK-01**: User can target a workspace root for analysis and limit searches to supported source files inside that workspace.
-- [ ] **WORK-02**: User can configure or inspect path exclusions so generated, vendored, and dependency directories do not dominate results.
-- [ ] **WORK-03**: User can see which languages/grammars are available for the current server instance and which files were skipped as unsupported.
-- [ ] **WORK-04**: User gets actionable errors when parsing fails or when a requested language/file is unsupported.
+- [x] **WORK-01**: User can target a workspace root for analysis and limit searches to supported source files inside that workspace.
+- [x] **WORK-02**: User can configure or inspect path exclusions so generated, vendored, and dependency directories do not dominate results.
+- [x] **WORK-03**: User can see which languages/grammars are available for the current server instance and which files were skipped as unsupported.
+- [x] **WORK-04**: User gets actionable errors when parsing fails or when a requested language/file is unsupported.
 
 ### Semantic Search
 
@@ -30,7 +30,7 @@
 
 - [ ] **RES-01**: User receives stable line/column ranges for every semantic match so another tool can open the exact location.
 - [ ] **RES-02**: User can paginate large result sets and see whether more matches remain.
-- [ ] **RES-03**: User can inspect server capabilities or health before searching, including supported query types and current workspace constraints.
+- [x] **RES-03**: User can inspect server capabilities or health before searching, including supported query types and current workspace constraints.
 
 ## v2 Requirements
 
@@ -65,13 +65,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MCP-01 | Phase 1 | Pending |
-| MCP-02 | Phase 1 | Pending |
+| MCP-01 | Phase 1 | Complete |
+| MCP-02 | Phase 1 | Complete |
 | MCP-03 | Phase 3 | Pending |
-| WORK-01 | Phase 1 | Pending |
-| WORK-02 | Phase 1 | Pending |
-| WORK-03 | Phase 1 | Pending |
-| WORK-04 | Phase 1 | Pending |
+| WORK-01 | Phase 1 | Complete |
+| WORK-02 | Phase 1 | Complete |
+| WORK-03 | Phase 1 | Complete |
+| WORK-04 | Phase 1 | Complete |
 | SEM-01 | Phase 2 | Pending |
 | SEM-02 | Phase 3 | Pending |
 | SEM-03 | Phase 2 | Pending |
@@ -79,7 +79,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SEM-05 | Phase 3 | Pending |
 | RES-01 | Phase 2 | Pending |
 | RES-02 | Phase 3 | Pending |
-| RES-03 | Phase 1 | Pending |
+| RES-03 | Phase 1 | Complete |
 
 **Coverage:**
 - v1 requirements: 15 total
@@ -88,4 +88,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-03-12*
-*Last updated: 2026-03-12 after roadmap creation*
+*Last updated: 2026-03-15 after Phase 1 execution*
