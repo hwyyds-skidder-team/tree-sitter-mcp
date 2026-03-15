@@ -25,6 +25,10 @@ export interface QueryDefinition {
   classify(definitionNode: Parser.SyntaxNode, nameNode: Parser.SyntaxNode): SymbolKind;
 }
 
+export interface CompilableQueryDefinition {
+  source: string;
+}
+
 interface ExtractSymbolsInput {
   language: RegisteredLanguage;
   absolutePath: string;
@@ -140,7 +144,7 @@ export function extractSymbols(input: ExtractSymbolsInput): SymbolMatch[] {
   });
 }
 
-export function getCompiledQuery(language: RegisteredLanguage, definition: QueryDefinition): Parser.Query {
+export function getCompiledQuery(language: RegisteredLanguage, definition: CompilableQueryDefinition): Parser.Query {
   const cacheKey = `${language.id}:${definition.source}`;
   const cachedQuery = queryCache.get(cacheKey);
   if (cachedQuery) {

@@ -21,6 +21,7 @@ export const DiagnosticCodeSchema = z.enum([
   "unsupported_language",
   "parse_failed",
   "definition_not_found",
+  "reference_not_found",
 ]);
 
 export const DiagnosticSchema = z.object({
