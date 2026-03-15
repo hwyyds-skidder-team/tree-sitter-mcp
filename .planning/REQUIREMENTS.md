@@ -9,7 +9,7 @@
 
 - [x] **MCP-01**: User can run `tree-sitter-mcp` as a standalone MCP server from the dedicated `tree-sitter-mcp` directory.
 - [x] **MCP-02**: User can call read-only semantic code search tools from an MCP client over local transport without setting up a persistent index first.
-- [ ] **MCP-03**: User receives structured tool results that include machine-readable fields plus concise text summaries suitable for AI-agent workflows.
+- [x] **MCP-03**: User receives structured tool results that include machine-readable fields plus concise text summaries suitable for AI-agent workflows.
 
 ### Workspace Discovery
 
@@ -21,15 +21,15 @@
 ### Semantic Search
 
 - [x] **SEM-01**: User can search for symbol definitions by name across the workspace and receive symbol kind, file path, and source location.
-- [ ] **SEM-02**: User can find references or call sites for a symbol within the workspace.
+- [x] **SEM-02**: User can find references or call sites for a symbol within the workspace.
 - [x] **SEM-03**: User can retrieve the definition for a discovered symbol or reference target.
 - [x] **SEM-04**: User can restrict semantic searches by path, language, and symbol kind to reduce noise.
-- [ ] **SEM-05**: User can request surrounding syntax context for each match, including enclosing scope and a short source snippet.
+- [x] **SEM-05**: User can request surrounding syntax context for each match, including enclosing scope and a short source snippet.
 
 ### Result Handling
 
 - [x] **RES-01**: User receives stable line/column ranges for every semantic match so another tool can open the exact location.
-- [ ] **RES-02**: User can paginate large result sets and see whether more matches remain.
+- [x] **RES-02**: User can paginate large result sets and see whether more matches remain.
 - [x] **RES-03**: User can inspect server capabilities or health before searching, including supported query types and current workspace constraints.
 
 ## v2 Requirements
@@ -67,18 +67,18 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | MCP-01 | Phase 1 | Complete |
 | MCP-02 | Phase 1 | Complete |
-| MCP-03 | Phase 3 | Pending |
+| MCP-03 | Phase 3 | Complete |
 | WORK-01 | Phase 1 | Complete |
 | WORK-02 | Phase 1 | Complete |
 | WORK-03 | Phase 1 | Complete |
 | WORK-04 | Phase 1 | Complete |
 | SEM-01 | Phase 2 | Complete |
-| SEM-02 | Phase 3 | Pending |
+| SEM-02 | Phase 3 | Complete |
 | SEM-03 | Phase 2 | Complete |
 | SEM-04 | Phase 2 | Complete |
-| SEM-05 | Phase 3 | Pending |
+| SEM-05 | Phase 3 | Complete |
 | RES-01 | Phase 2 | Complete |
-| RES-02 | Phase 3 | Pending |
+| RES-02 | Phase 3 | Complete |
 | RES-03 | Phase 1 | Complete |
 
 **Coverage:**
@@ -88,4 +88,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-03-12*
-*Last updated: 2026-03-15 after Phase 2 execution*
+*Last updated: 2026-03-15 after Phase 3 execution*

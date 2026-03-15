@@ -12,7 +12,7 @@ Build `tree-sitter-mcp` as a standalone, AI-agent-first MCP server that starts w
 
 - [x] **Phase 1: Server Foundation and Workspace Discovery** - Boot the standalone MCP server and make it understand a local workspace. (completed 2026-03-15)
 - [x] **Phase 2: Definition Search Core** - Deliver precise definition lookup and filtered symbol discovery on top of Tree-sitter parsing. (completed 2026-03-15)
-- [ ] **Phase 3: Reference Search and Agent-Ready Results** - Complete the semantic retrieval loop with references, context, and paginated structured output.
+- [x] **Phase 3: Reference Search and Agent-Ready Results** - Complete the semantic retrieval loop with references, context, and paginated structured output. (completed 2026-03-15)
 
 ## Phase Details
 
@@ -60,9 +60,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 03-01: Implement reference and call-site retrieval on top of the definition pipeline.
-- [ ] 03-02: Add context extraction, snippet shaping, and pagination metadata.
-- [ ] 03-03: Validate end-to-end agent workflows and package the server for standalone use.
+- [x] 03-01: Implement reference and call-site retrieval on top of the definition pipeline.
+- [x] 03-02: Add context extraction, snippet shaping, and pagination metadata.
+- [x] 03-03: Validate end-to-end agent workflows and package the server for standalone use.
 
 ## Progress
 
@@ -73,4 +73,4 @@ Phases execute in numeric order: 1 -> 2 -> 3
 |-------|----------------|--------|-----------|
 | 1. Server Foundation and Workspace Discovery | 3/3 | Complete   | 2026-03-15 |
 | 2. Definition Search Core | 3/3 | Complete | 2026-03-15 |
-| 3. Reference Search and Agent-Ready Results | 0/3 | Not started | - |
+| 3. Reference Search and Agent-Ready Results | 3/3 | Complete | 2026-03-15 |
