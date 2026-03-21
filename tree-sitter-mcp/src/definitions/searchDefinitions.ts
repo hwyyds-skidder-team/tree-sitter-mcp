@@ -1,4 +1,5 @@
 import { createDiagnostic, type Diagnostic } from "../diagnostics/diagnosticFactory.js";
+import { createSearchFreshness, type SearchFreshness } from "../indexing/indexTypes.js";
 import type { SymbolKind } from "../queries/queryCatalog.js";
 import type { ServerContext } from "../server/serverContext.js";
 import {
@@ -20,6 +21,7 @@ export interface SearchDefinitionsRequest {
 export interface SearchDefinitionsResult {
   filters: DefinitionFilters;
   results: DefinitionMatch[];
+  freshness: SearchFreshness;
   diagnostics: Diagnostic[];
   searchedFiles: number;
   matchedFiles: number;
@@ -41,6 +43,13 @@ export async function searchDefinitions(
     return {
       filters: emptyFilters,
       results: [],
+      freshness: createSearchFreshness({
+        state: context.workspace.index.state,
+        checkedAt: new Date().toISOString(),
+        refreshedFiles: [],
+        degradedFiles: [],
+        workspaceFingerprint: context.workspace.index.workspaceFingerprint,
+      }),
       diagnostics: [createDiagnostic({
         code: "workspace_not_set",
         message: "No workspace is configured.",
@@ -67,6 +76,13 @@ export async function searchDefinitions(
     return {
       filters: normalizedFiltersResult.filters,
       results: [],
+      freshness: createSearchFreshness({
+        state: context.workspace.index.state,
+        checkedAt: new Date().toISOString(),
+        refreshedFiles: [],
+        degradedFiles: [],
+        workspaceFingerprint: context.workspace.index.workspaceFingerprint,
+      }),
       diagnostics: [normalizedFiltersResult.diagnostic],
       searchedFiles: 0,
       matchedFiles: 0,
@@ -79,6 +95,13 @@ export async function searchDefinitions(
     return {
       filters: normalizedFiltersResult.filters,
       results: [],
+      freshness: createSearchFreshness({
+        state: context.workspace.index.state,
+        checkedAt: new Date().toISOString(),
+        refreshedFiles: [],
+        degradedFiles: [],
+        workspaceFingerprint: context.workspace.index.workspaceFingerprint,
+      }),
       diagnostics: [],
       searchedFiles: 0,
       matchedFiles: 0,
@@ -131,6 +154,7 @@ export async function searchDefinitions(
   return {
     filters: normalizedFiltersResult.filters,
     results,
+    freshness: freshIndex.freshness,
     diagnostics,
     searchedFiles,
     matchedFiles: new Set(results.map((definition) => definition.relativePath)).size,

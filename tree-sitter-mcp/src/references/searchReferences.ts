@@ -5,6 +5,7 @@ import type {
   DefinitionSymbolDescriptor,
 } from "../definitions/resolveDefinition.js";
 import type { DefinitionMatch } from "../definitions/definitionTypes.js";
+import { createSearchFreshness, type SearchFreshness } from "../indexing/indexTypes.js";
 import { paginateResults, type Pagination } from "../results/paginateResults.js";
 import type { ServerContext } from "../server/serverContext.js";
 import type { ReferenceMatch } from "./referenceTypes.js";
@@ -20,6 +21,7 @@ export interface SearchReferencesRequest {
 export interface SearchReferencesResult {
   target: DefinitionMatch | null;
   results: ReferenceMatch[];
+  freshness: SearchFreshness;
   diagnostic: Diagnostic | null;
   diagnostics: Diagnostic[];
   searchedFiles: number;
@@ -47,6 +49,13 @@ export async function searchReferences(
     return {
       target: null,
       results: [],
+      freshness: createSearchFreshness({
+        state: context.workspace.index.state,
+        checkedAt: new Date().toISOString(),
+        refreshedFiles: [],
+        degradedFiles: [],
+        workspaceFingerprint: context.workspace.index.workspaceFingerprint,
+      }),
       diagnostic,
       diagnostics: [diagnostic],
       searchedFiles: 0,
@@ -68,6 +77,13 @@ export async function searchReferences(
     return {
       target: null,
       results: [],
+      freshness: createSearchFreshness({
+        state: context.workspace.index.state,
+        checkedAt: new Date().toISOString(),
+        refreshedFiles: [],
+        degradedFiles: [],
+        workspaceFingerprint: context.workspace.index.workspaceFingerprint,
+      }),
       diagnostic,
       diagnostics: [diagnostic],
       searchedFiles: 0,
@@ -86,6 +102,13 @@ export async function searchReferences(
     return {
       target: null,
       results: [],
+      freshness: createSearchFreshness({
+        state: context.workspace.index.state,
+        checkedAt: new Date().toISOString(),
+        refreshedFiles: [],
+        degradedFiles: [],
+        workspaceFingerprint: context.workspace.index.workspaceFingerprint,
+      }),
       diagnostic: targetResult.diagnostic,
       diagnostics: dedupeDiagnostics(diagnostics),
       searchedFiles: 0,
@@ -149,6 +172,7 @@ export async function searchReferences(
     return {
       target: targetMatch,
       results,
+      freshness: freshIndex.freshness,
       diagnostic,
       diagnostics: dedupeDiagnostics(diagnostics),
       searchedFiles,
@@ -161,6 +185,7 @@ export async function searchReferences(
   return {
     target: targetMatch,
     results,
+    freshness: freshIndex.freshness,
     diagnostic: null,
     diagnostics: dedupeDiagnostics(diagnostics),
     searchedFiles,

@@ -11,8 +11,10 @@ import {
 } from "./collectIndexedFileSemantics.js";
 import {
   createEmptyWorkspaceIndexSummary,
+  createSearchFreshness,
   summarizeWorkspaceIndexManifest,
   type FreshnessState,
+  type SearchFreshness,
   type WorkspaceIndexSummary,
   WorkspaceIndexSummarySchema,
 } from "./indexTypes.js";
@@ -48,6 +50,7 @@ export interface SemanticIndexCoordinator {
   ensureReady(context: ServerContext): Promise<WorkspaceIndexSummary>;
   ensureFresh(context: ServerContext): Promise<FreshRecordsResult>;
   getFreshRecords(context: ServerContext): Promise<FreshRecordsResult>;
+  getLastLoadResult(): LoadWorkspaceIndexResult | null;
   getSummary(): WorkspaceIndexSummary;
   clear(): WorkspaceIndexSummary;
 }
@@ -60,7 +63,10 @@ interface ActiveWorkspaceState {
 
 export interface FreshRecordsResult {
   records: PersistedIndexedFileRecord[];
+  refreshedFiles: string[];
   degradedFiles: string[];
+  checkedAt: string;
+  freshness: SearchFreshness;
   diagnostics: Diagnostic[];
   summary: WorkspaceIndexSummary;
 }
@@ -103,6 +109,7 @@ export function createSemanticIndexCoordinator(
   let summary: WorkspaceIndexSummary = createEmptyWorkspaceIndexSummary();
   let readyPromise: Promise<WorkspaceIndexSummary> | null = null;
   let refreshPromise: Promise<FreshRecordsResult> | null = null;
+  let lastLoadResult: LoadWorkspaceIndexResult | null = null;
 
   function publishSummary(nextSummary: WorkspaceIndexSummary): WorkspaceIndexSummary {
     summary = WorkspaceIndexSummarySchema.parse(nextSummary);
@@ -124,6 +131,7 @@ export function createSemanticIndexCoordinator(
   ): WorkspaceIndexSummary {
     return {
       enabled: true,
+      indexMode: "persistent_disk",
       storageMode: "disk",
       state,
       workspaceFingerprint: activeWorkspace.fingerprint,
@@ -205,6 +213,7 @@ export function createSemanticIndexCoordinator(
   const coordinator: SemanticIndexCoordinator = {
     async loadPersistedIndex(): Promise<LoadWorkspaceIndexResult> {
       const result = await loadWorkspaceIndex(config, getWorkspaceFingerprint());
+      lastLoadResult = result;
 
       if (result.status === "loaded") {
         try {
@@ -217,13 +226,14 @@ export function createSemanticIndexCoordinator(
           lastRefreshedAt = null;
           publishSummary(createSummary("rebuilding", 0));
 
-          return {
+          lastLoadResult = {
             status: "invalid",
             reason: error instanceof Error ? error.message : String(error),
             directory: result.directory,
             manifestPath: result.manifestPath,
             recordsPath: result.recordsPath,
           };
+          return lastLoadResult;
         }
 
         degradedFiles = normalizeDegradedFiles(result.manifest.degradedFiles);
@@ -267,6 +277,7 @@ export function createSemanticIndexCoordinator(
       degradedFiles = [];
       lastBuiltAt = null;
       lastRefreshedAt = null;
+      lastLoadResult = null;
 
       return coordinator.markBuilding();
     },
@@ -332,12 +343,23 @@ export function createSemanticIndexCoordinator(
       }
 
       refreshPromise = (async () => {
+        const checkedAt = now();
         const { refreshWorkspaceIndex } = await import("./refreshWorkspaceIndex.js");
         const refreshResult = await refreshWorkspaceIndex(context, records);
+        const freshness = createSearchFreshness({
+          state: summarizeFreshnessState(refreshResult),
+          checkedAt,
+          refreshedFiles: [...refreshResult.refreshedFiles],
+          degradedFiles: [...refreshResult.degradedFiles],
+          workspaceFingerprint: refreshResult.summary.workspaceFingerprint,
+        });
 
         return {
           records: cloneRecords(refreshResult.records),
+          refreshedFiles: [...refreshResult.refreshedFiles],
           degradedFiles: [...refreshResult.degradedFiles],
+          checkedAt,
+          freshness,
           diagnostics: collectDiagnostics(refreshResult.records),
           summary: refreshResult.summary,
         };
@@ -352,6 +374,10 @@ export function createSemanticIndexCoordinator(
 
     async getFreshRecords(context: ServerContext): Promise<FreshRecordsResult> {
       return coordinator.ensureFresh(context);
+    },
+
+    getLastLoadResult(): LoadWorkspaceIndexResult | null {
+      return lastLoadResult;
     },
 
     getSummary(): WorkspaceIndexSummary {
@@ -370,6 +396,7 @@ export function createSemanticIndexCoordinator(
       lastRefreshedAt = null;
       readyPromise = null;
       refreshPromise = null;
+      lastLoadResult = null;
       return publishSummary(createEmptyWorkspaceIndexSummary());
     },
   };
@@ -413,4 +440,26 @@ function projectLegacyRecord(record: PersistedIndexedFileRecord): IndexedFileSem
 
 function collectDiagnostics(records: readonly PersistedIndexedFileRecord[]): Diagnostic[] {
   return records.flatMap((record) => record.diagnostics);
+}
+
+function summarizeFreshnessState(
+  refreshResult: {
+    refreshedFiles: string[];
+    degradedFiles: string[];
+    summary: WorkspaceIndexSummary;
+  },
+): FreshnessState {
+  if (refreshResult.summary.state === "rebuilding") {
+    return "rebuilding";
+  }
+
+  if (refreshResult.degradedFiles.length > 0) {
+    return "degraded";
+  }
+
+  if (refreshResult.refreshedFiles.length > 0) {
+    return "refreshed";
+  }
+
+  return "fresh";
 }

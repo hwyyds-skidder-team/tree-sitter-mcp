@@ -14,6 +14,7 @@ export interface RefreshWorkspaceIndexResult {
   records: PersistedIndexedFileRecord[];
   diagnostics: Diagnostic[];
   degradedFiles: string[];
+  refreshedFiles: string[];
   refreshed: boolean;
   summary: WorkspaceIndexSummary;
 }
@@ -27,6 +28,7 @@ export async function refreshWorkspaceIndex(
       records: [...existingRecords],
       diagnostics: [],
       degradedFiles: [],
+      refreshedFiles: [],
       refreshed: false,
       summary: context.semanticIndex.getSummary(),
     };
@@ -47,7 +49,10 @@ export async function refreshWorkspaceIndex(
   const remainingRecords = new Map(existingRecords.map((record) => [record.relativePath, record]));
   const nextRecords: PersistedIndexedFileRecord[] = [];
   const diagnostics: Diagnostic[] = [];
-  const degradedFiles: string[] = [];
+  const degradedFiles = new Set(existingRecords
+    .filter((record) => record.diagnostics.length > 0)
+    .map((record) => record.relativePath));
+  const refreshedFiles: string[] = [];
   let refreshed = false;
 
   for (const file of context.workspace.searchableFiles) {
@@ -61,17 +66,24 @@ export async function refreshWorkspaceIndex(
     }
 
     refreshed = true;
+    refreshedFiles.push(file.relativePath);
     const refreshedRecord = await collectIndexedFileSemantics(context, file, snapshot);
     nextRecords.push(refreshedRecord);
     diagnostics.push(...refreshedRecord.diagnostics);
 
     if (refreshedRecord.diagnostics.length > 0) {
-      degradedFiles.push(refreshedRecord.relativePath);
+      degradedFiles.add(refreshedRecord.relativePath);
+    } else {
+      degradedFiles.delete(refreshedRecord.relativePath);
     }
   }
 
   if (remainingRecords.size > 0) {
     refreshed = true;
+    refreshedFiles.push(...remainingRecords.keys());
+    for (const removedRelativePath of remainingRecords.keys()) {
+      degradedFiles.delete(removedRelativePath);
+    }
   }
 
   nextRecords.sort((left, right) => left.relativePath.localeCompare(right.relativePath));
@@ -80,7 +92,8 @@ export async function refreshWorkspaceIndex(
     return {
       records: nextRecords,
       diagnostics,
-      degradedFiles: uniqueSortedRelativePaths(degradedFiles),
+      degradedFiles: uniqueSortedRelativePaths([...degradedFiles]),
+      refreshedFiles: [],
       refreshed: false,
       summary: context.semanticIndex.getSummary(),
     };
@@ -89,13 +102,14 @@ export async function refreshWorkspaceIndex(
   // Refresh writes the updated manifest.json and records.json for the active snapshot.
   const summary = await context.semanticIndex.markRefreshed(
     nextRecords,
-    uniqueSortedRelativePaths(degradedFiles),
+    uniqueSortedRelativePaths([...degradedFiles]),
   );
 
   return {
     records: nextRecords,
     diagnostics,
-    degradedFiles: uniqueSortedRelativePaths(degradedFiles),
+    degradedFiles: uniqueSortedRelativePaths([...degradedFiles]),
+    refreshedFiles: uniqueSortedRelativePaths(refreshedFiles),
     refreshed: true,
     summary,
   };

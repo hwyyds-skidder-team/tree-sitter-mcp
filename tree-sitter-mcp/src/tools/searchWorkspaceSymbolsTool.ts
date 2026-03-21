@@ -2,11 +2,13 @@ import path from "node:path";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { createDiagnostic, DiagnosticSchema } from "../diagnostics/diagnosticFactory.js";
+import { SearchFreshnessSchema } from "../indexing/indexTypes.js";
 import {
   SymbolKindSchema,
   SymbolMatchSchema,
 } from "../queries/queryCatalog.js";
 import type { ServerContext } from "../server/serverContext.js";
+import { createDefaultFreshness, createFreshnessDiagnostics } from "./indexFreshness.js";
 import { createExclusionPolicy } from "../workspace/exclusionPolicy.js";
 import { resolveWorkspacePath } from "../workspace/resolveWorkspace.js";
 
@@ -31,6 +33,7 @@ const SearchWorkspaceSymbolsOutputSchema = z.object({
     limit: z.number().int().positive(),
   }),
   results: z.array(SymbolMatchSchema),
+  freshness: SearchFreshnessSchema,
   diagnostics: z.array(DiagnosticSchema),
 });
 
@@ -78,6 +81,7 @@ export function registerSearchWorkspaceSymbolsTool(server: McpServer, context: S
             truncated: false,
             filters,
             results: [],
+            freshness: createDefaultFreshness(context.workspace.index),
             diagnostics: [diagnostic],
           },
         };
@@ -103,6 +107,7 @@ export function registerSearchWorkspaceSymbolsTool(server: McpServer, context: S
             truncated: false,
             filters,
             results: [],
+            freshness: createDefaultFreshness(context.workspace.index),
             diagnostics: [diagnostic],
           },
         };
@@ -137,6 +142,7 @@ export function registerSearchWorkspaceSymbolsTool(server: McpServer, context: S
               truncated: false,
               filters,
               results: [],
+              freshness: createDefaultFreshness(context.workspace.index),
               diagnostics: [diagnostic],
             },
           };
@@ -204,18 +210,39 @@ export function registerSearchWorkspaceSymbolsTool(server: McpServer, context: S
         truncated,
         filters,
         results,
-        diagnostics,
+        freshness: freshIndex.freshness,
+        diagnostics: [...diagnostics, ...createFreshnessDiagnostics(freshIndex.freshness)],
       };
 
       return {
         content: [
           {
             type: "text" as const,
-            text: `Found ${results.length} symbol matches across ${uniqueFiles.size} files after searching ${searchedFiles} files.`,
+            text: describeWorkspaceSymbolSearchText(
+              `Found ${results.length} symbol matches across ${uniqueFiles.size} files after searching ${searchedFiles} files.`,
+              payload.freshness,
+            ),
           },
         ],
         structuredContent: payload,
       };
     },
   );
+}
+
+function describeWorkspaceSymbolSearchText(
+  baseText: string,
+  freshness: z.infer<typeof SearchFreshnessSchema>,
+): string {
+  switch (freshness.state) {
+    case "refreshed":
+      return `${baseText} Refreshed ${freshness.refreshedFiles.length} file(s) before searching.`;
+    case "degraded":
+      return `${baseText} Warning: excluded ${freshness.degradedFiles.length} degraded file(s) from symbol search.`;
+    case "rebuilding":
+      return `${baseText} Warning: the persistent index is rebuilding.`;
+    case "fresh":
+    default:
+      return baseText;
+  }
 }
