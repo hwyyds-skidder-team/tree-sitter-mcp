@@ -88,10 +88,12 @@ test("capabilities and health expose parser mode, languages, workspace root, and
       "definition_resolve",
       "reference_search",
       "call_site_search",
+      "relationship_view",
     ]);
     assert.ok(capabilities.toolNames.includes("search_definitions"));
     assert.ok(capabilities.toolNames.includes("resolve_definition"));
     assert.ok(capabilities.toolNames.includes("search_references"));
+    assert.ok(capabilities.toolNames.includes("get_relationship_view"));
     assert.equal(capabilities.workspace.root, null);
     assert.deepEqual(capabilities.workspace.roots, []);
     assert.equal(capabilities.workspace.workspaceCount, 0);
@@ -118,6 +120,7 @@ test("capabilities and health expose parser mode, languages, workspace root, and
       status: string;
       indexMode: string;
       supportedQueryTypes: string[];
+      toolNames: string[];
       diagnostics: Array<{ code: string }>;
     };
     assert.equal(initialHealth.status, "workspace_not_set");
@@ -129,7 +132,9 @@ test("capabilities and health expose parser mode, languages, workspace root, and
       "definition_resolve",
       "reference_search",
       "call_site_search",
+      "relationship_view",
     ]);
+    assert.ok(initialHealth.toolNames.includes("get_relationship_view"));
     assert.equal(initialHealth.diagnostics[0]?.code, "workspace_not_set");
 
     const setWorkspaceResult = await client.callTool({
@@ -176,6 +181,7 @@ test("capabilities and health expose parser mode, languages, workspace root, and
       status: string;
       indexMode: string;
       supportedQueryTypes: string[];
+      toolNames: string[];
       workspace: {
         root: string | null;
         roots: string[];
@@ -195,7 +201,9 @@ test("capabilities and health expose parser mode, languages, workspace root, and
       "definition_resolve",
       "reference_search",
       "call_site_search",
+      "relationship_view",
     ]);
+    assert.ok(readyHealth.toolNames.includes("get_relationship_view"));
     assert.equal(readyHealth.workspace.root, workspaceRoot);
     assert.deepEqual(readyHealth.workspace.roots, [workspaceRoot]);
     assert.equal(readyHealth.workspace.workspaceCount, 1);
