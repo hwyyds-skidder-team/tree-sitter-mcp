@@ -13,6 +13,7 @@ import { normalizeDefinitionMatches } from "./normalizeDefinitionMatch.js";
 export interface SearchDefinitionsRequest {
   query: string;
   limit?: number;
+  workspaceRoots?: string[];
   language?: string;
   pathPrefix?: string;
   symbolKinds?: SymbolKind[];
@@ -34,6 +35,7 @@ export async function searchDefinitions(
 ): Promise<SearchDefinitionsResult> {
   const limit = request.limit ?? 50;
   const emptyFilters: DefinitionFilters = {
+    workspaceRoots: undefined,
     language: null,
     pathPrefix: null,
     symbolKinds: [],
@@ -64,8 +66,10 @@ export async function searchDefinitions(
 
   const normalizedFiltersResult = normalizeDefinitionFilters({
     workspaceRoot: context.workspace.root,
+    configuredRoots: context.workspace.roots,
     languageRegistry: context.languageRegistry,
     input: {
+      workspaceRoots: request.workspaceRoots,
       language: request.language,
       pathPrefix: request.pathPrefix,
       symbolKinds: request.symbolKinds,
@@ -141,6 +145,10 @@ export async function searchDefinitions(
       return left.score - right.score;
     }
 
+    if (left.workspaceRoot !== right.workspaceRoot) {
+      return left.workspaceRoot.localeCompare(right.workspaceRoot);
+    }
+
     if (left.relativePath != right.relativePath) {
       return left.relativePath.localeCompare(right.relativePath);
     }
@@ -157,7 +165,9 @@ export async function searchDefinitions(
     freshness: freshIndex.freshness,
     diagnostics,
     searchedFiles,
-    matchedFiles: new Set(results.map((definition) => definition.relativePath)).size,
+    matchedFiles: new Set(
+      results.map((definition) => JSON.stringify([definition.workspaceRoot, definition.relativePath])),
+    ).size,
     truncated,
   };
 }

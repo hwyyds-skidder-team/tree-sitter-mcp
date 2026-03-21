@@ -9,11 +9,12 @@ export function normalizeDefinitionMatch(match: SymbolMatch): DefinitionMatch {
     DefinitionMatchSchema.shape.range.parse(match.selectionRange),
     range,
   );
+  const workspaceRoot = normalizeWorkspaceRoot(match);
 
   return DefinitionMatchSchema.parse({
     ...match,
     languageId: match.languageId.trim().toLowerCase(),
-    workspaceRoot: path.normalize(match.workspaceRoot),
+    workspaceRoot,
     filePath: path.normalize(match.filePath),
     relativePath: normalizeRelativePath(match.relativePath),
     range,
@@ -60,4 +61,26 @@ function normalizeContainerName(containerName: string | null): string | null {
 
 function normalizeSnippet(snippet: string): string {
   return snippet.trim().replace(/\s+/g, " ");
+}
+
+function normalizeWorkspaceRoot(
+  match: Pick<SymbolMatch, "filePath" | "relativePath"> & { workspaceRoot?: string },
+): string {
+  const explicitWorkspaceRoot = match.workspaceRoot?.trim() ?? "";
+  if (explicitWorkspaceRoot.length > 0) {
+    return path.normalize(explicitWorkspaceRoot);
+  }
+
+  return deriveWorkspaceRoot(match.filePath, match.relativePath);
+}
+
+function deriveWorkspaceRoot(filePath: string, relativePath: string): string {
+  const normalizedFilePath = path.normalize(filePath);
+  const normalizedRelativePath = normalizeRelativePath(relativePath);
+  if (normalizedRelativePath.length === 0 || normalizedRelativePath === ".") {
+    return path.dirname(normalizedFilePath);
+  }
+
+  const segmentCount = normalizedRelativePath.split("/").filter((segment) => segment.length > 0).length;
+  return path.resolve(path.dirname(normalizedFilePath), ...Array(Math.max(segmentCount - 1, 0)).fill(".."));
 }

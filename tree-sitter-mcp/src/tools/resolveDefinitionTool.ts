@@ -13,6 +13,7 @@ import type { ServerContext } from "../server/serverContext.js";
 const DefinitionLookupSchema = z.object({
   name: z.string().min(1),
   languageId: z.string().min(1).optional(),
+  workspaceRoot: z.string().min(1).optional(),
   relativePath: z.string().min(1).optional(),
   kind: SymbolKindSchema.optional(),
 });
@@ -53,7 +54,10 @@ export function registerResolveDefinitionTool(server: McpServer, context: Server
       });
 
       const payload = {
-        workspaceRoot: context.workspace.root,
+        workspaceRoot: result.match?.workspaceRoot
+          ?? input.symbol?.workspaceRoot
+          ?? input.lookup?.workspaceRoot
+          ?? context.workspace.root,
         filters: result.filters,
         searchedFiles: result.searchedFiles,
         match: result.match,

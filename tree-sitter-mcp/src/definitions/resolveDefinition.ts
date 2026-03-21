@@ -12,6 +12,7 @@ import { normalizeDefinitionMatches } from "./normalizeDefinitionMatch.js";
 export interface DefinitionSymbolDescriptor {
   name: string;
   languageId?: string;
+  workspaceRoot?: string;
   relativePath?: string;
   kind?: SymbolKind;
 }
@@ -19,6 +20,7 @@ export interface DefinitionSymbolDescriptor {
 export interface DefinitionLookupRequest {
   name: string;
   languageId?: string;
+  workspaceRoot?: string;
   relativePath?: string;
   kind?: SymbolKind;
 }
@@ -41,6 +43,7 @@ export async function resolveDefinition(
   request: ResolveDefinitionRequest,
 ): Promise<ResolveDefinitionResult> {
   const emptyFilters: DefinitionFilters = {
+    workspaceRoots: undefined,
     language: null,
     pathPrefix: null,
     symbolKinds: [],
@@ -84,8 +87,10 @@ export async function resolveDefinition(
   const normalizedName = target.name.trim().toLowerCase();
   const normalizedFiltersResult = normalizeDefinitionFilters({
     workspaceRoot: context.workspace.root,
+    configuredRoots: context.workspace.roots,
     languageRegistry: context.languageRegistry,
     input: {
+      workspaceRoots: target.workspaceRoot ? [target.workspaceRoot] : undefined,
       language: target.languageId,
       pathPrefix: target.relativePath,
       symbolKinds: target.kind ? [target.kind] : [],
@@ -170,7 +175,7 @@ export async function resolveDefinition(
   };
 }
 
-function prioritizeSearchableFiles<T extends { relativePath: string }>(
+function prioritizeSearchableFiles<T extends { relativePath: string; workspaceRoot?: string }>(
   files: T[],
   preferredPathPrefix: string | null,
 ): T[] {
@@ -181,6 +186,10 @@ function prioritizeSearchableFiles<T extends { relativePath: string }>(
       if (leftPriority !== rightPriority) {
         return leftPriority - rightPriority;
       }
+    }
+
+    if (left.workspaceRoot && right.workspaceRoot && left.workspaceRoot !== right.workspaceRoot) {
+      return left.workspaceRoot.localeCompare(right.workspaceRoot);
     }
 
     return left.relativePath.localeCompare(right.relativePath);
@@ -197,6 +206,10 @@ function rankDefinitionMatches(
     const rightScore = scoreDefinition(right, target, filters);
     if (leftScore !== rightScore) {
       return leftScore - rightScore;
+    }
+
+    if (left.workspaceRoot !== right.workspaceRoot) {
+      return left.workspaceRoot.localeCompare(right.workspaceRoot);
     }
 
     if (left.relativePath !== right.relativePath) {

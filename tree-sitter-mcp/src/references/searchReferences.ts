@@ -8,11 +8,19 @@ import type { DefinitionMatch } from "../definitions/definitionTypes.js";
 import { createSearchFreshness, type SearchFreshness } from "../indexing/indexTypes.js";
 import { paginateResults, type Pagination } from "../results/paginateResults.js";
 import type { ServerContext } from "../server/serverContext.js";
+import {
+  filterReferenceSearchableFiles,
+  matchesReferenceFilters,
+  normalizeReferenceFilters,
+} from "./referenceFilters.js";
 import type { ReferenceMatch } from "./referenceTypes.js";
 
 export interface SearchReferencesRequest {
   symbol?: DefinitionSymbolDescriptor;
   lookup?: DefinitionLookupRequest;
+  workspaceRoots?: string[];
+  language?: string;
+  pathPrefix?: string;
   limit?: number;
   offset?: number;
   includeContext?: boolean;
@@ -119,12 +127,53 @@ export async function searchReferences(
   }
 
   const targetMatch = targetResult.match;
+  const normalizedFiltersResult = normalizeReferenceFilters({
+    workspaceRoot: context.workspace.root,
+    configuredRoots: context.workspace.roots,
+    languageRegistry: context.languageRegistry,
+    input: {
+      workspaceRoots: request.workspaceRoots,
+      language: request.language,
+      pathPrefix: request.pathPrefix,
+    },
+  });
+
+  if (normalizedFiltersResult.diagnostic) {
+    diagnostics.push(normalizedFiltersResult.diagnostic);
+    return {
+      target: targetMatch,
+      results: [],
+      freshness: createSearchFreshness({
+        state: context.workspace.index.state,
+        checkedAt: new Date().toISOString(),
+        refreshedFiles: [],
+        degradedFiles: [],
+        workspaceFingerprint: context.workspace.index.workspaceFingerprint,
+      }),
+      diagnostic: normalizedFiltersResult.diagnostic,
+      diagnostics: dedupeDiagnostics(diagnostics),
+      searchedFiles: 0,
+      matchedFiles: 0,
+      pagination: paginateResults([], { limit, offset }).pagination,
+      truncated: false,
+    };
+  }
+
   const compatibleLanguageIds = getCompatibleLanguageIds(targetMatch.languageId);
   const freshIndex = await context.semanticIndex.getFreshRecords(context);
 
-  const candidateFiles = freshIndex.records
+  const candidateFiles = filterReferenceSearchableFiles(
+    freshIndex.records
     .filter((file) => compatibleLanguageIds.has(file.languageId))
-    .sort((left, right) => left.relativePath.localeCompare(right.relativePath));
+    .sort((left, right) => {
+      if (left.workspaceRoot !== right.workspaceRoot) {
+        return left.workspaceRoot.localeCompare(right.workspaceRoot);
+      }
+
+      return left.relativePath.localeCompare(right.relativePath);
+    }),
+    normalizedFiltersResult.filters,
+  );
 
   const matches: ReferenceMatch[] = [];
   let searchedFiles = 0;
@@ -138,10 +187,14 @@ export async function searchReferences(
       .filter((reference) => !isDefinitionSelection(reference, targetMatch))
       .map((reference) => shapeReferenceMatch(reference, targetMatch.kind, includeContext));
 
-    matches.push(...references);
+    matches.push(...references.filter((reference) => matchesReferenceFilters(reference, normalizedFiltersResult.filters)));
   }
 
   matches.sort((left, right) => {
+    if (left.workspaceRoot !== right.workspaceRoot) {
+      return left.workspaceRoot.localeCompare(right.workspaceRoot);
+    }
+
     if (left.relativePath !== right.relativePath) {
       return left.relativePath.localeCompare(right.relativePath);
     }
@@ -156,7 +209,9 @@ export async function searchReferences(
   const pagedResults = paginateResults(matches, { limit, offset });
   const truncated = pagedResults.pagination.hasMore;
   const results = pagedResults.items;
-  const matchedFiles = new Set(results.map((reference) => reference.relativePath)).size;
+  const matchedFiles = new Set(
+    results.map((reference) => JSON.stringify([reference.workspaceRoot, reference.relativePath])),
+  ).size;
 
   if (results.length === 0) {
     const diagnostic = createDiagnostic({
@@ -196,7 +251,8 @@ export async function searchReferences(
 }
 
 function isDefinitionSelection(reference: ReferenceMatch, target: DefinitionMatch): boolean {
-  return reference.relativePath === target.relativePath
+  return reference.workspaceRoot === target.workspaceRoot
+    && reference.relativePath === target.relativePath
     && reference.selectionRange.start.offset === target.selectionRange.start.offset
     && reference.selectionRange.end.offset === target.selectionRange.end.offset;
 }

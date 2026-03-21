@@ -16,6 +16,7 @@ export const DefinitionMatchSchema = z.object({
 });
 
 export const DefinitionFilterSchema = z.object({
+  workspaceRoots: z.array(z.string().min(1)).min(1).optional(),
   language: z.string().nullable(),
   pathPrefix: z.string().nullable(),
   symbolKinds: z.array(SymbolKindSchema),
@@ -25,6 +26,7 @@ export type DefinitionMatch = z.infer<typeof DefinitionMatchSchema>;
 export type DefinitionFilters = z.infer<typeof DefinitionFilterSchema>;
 
 export interface DefinitionFilterInput {
+  workspaceRoots?: readonly string[] | null;
   language?: string | null;
   pathPrefix?: string | null;
   symbolKinds?: readonly SymbolKind[] | null;
