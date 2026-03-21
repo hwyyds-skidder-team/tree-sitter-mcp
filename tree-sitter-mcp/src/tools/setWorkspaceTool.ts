@@ -2,8 +2,8 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { createDiagnostic, DiagnosticSchema } from "../diagnostics/diagnosticFactory.js";
 import type { ServerContext } from "../server/serverContext.js";
-import { discoverWorkspaceFiles } from "../workspace/discoverFiles.js";
-import { resolveWorkspaceRoot } from "../workspace/resolveWorkspace.js";
+import { discoverConfiguredWorkspaces } from "../workspace/discoverFiles.js";
+import { resolveWorkspaceRoots } from "../workspace/resolveWorkspace.js";
 import {
   applyWorkspaceSnapshot,
   mergeExclusions,
@@ -14,8 +14,17 @@ import {
 } from "../workspace/workspaceState.js";
 
 const SetWorkspaceInputSchema = z.object({
-  root: z.string().min(1),
+  root: z.string().min(1).optional(),
+  roots: z.array(z.string().min(1)).min(1).optional(),
   additionalExclusions: z.array(z.string().min(1)).optional(),
+}).superRefine((input, ctx) => {
+  if (!input.root && !input.roots?.length) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Either root or roots is required.",
+      path: ["root"],
+    });
+  }
 });
 
 const SetWorkspaceOutputSchema = z.object({
@@ -42,34 +51,43 @@ export function registerSetWorkspaceTool(server: McpServer, context: ServerConte
     },
     async (input) => {
       try {
-        const root = await resolveWorkspaceRoot(input.root);
+        const roots = await resolveWorkspaceRoots({
+          root: input.root,
+          roots: input.roots,
+        });
         const exclusions = mergeExclusions(
           context.config.defaultExclusions,
           input.additionalExclusions ?? [],
         );
-        const discovery = await discoverWorkspaceFiles(root, exclusions, context.languageRegistry);
+        const discovery = await discoverConfiguredWorkspaces(
+          roots,
+          exclusions,
+          context.languageRegistry,
+        );
         applyWorkspaceSnapshot(context.workspace, {
-          root,
+          root: roots[0] ?? null,
+          roots,
           exclusions,
           searchableFiles: discovery.searchableFiles,
           unsupportedFiles: discovery.unsupportedFiles,
         });
-        context.semanticIndex.replaceWorkspace({
+        context.semanticIndex.replaceWorkspaces(roots.map((root) => ({
           root,
           exclusions,
-        });
+        })));
         try {
           await context.semanticIndex.ensureReady(context);
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           const diagnostic = createDiagnostic({
             code: "index_build_failed",
-            message: "The persistent index failed to finish building for this workspace.",
+            message: "The persistent index failed to finish building for the configured workspace roots.",
             reason: message,
             nextStep: "Retry set_workspace after fixing the underlying issue or clearing the persisted index directory.",
             severity: "warning",
             details: {
-              root,
+              primaryRoot: roots[0] ?? null,
+              rootCount: roots.length,
             },
           });
 
@@ -88,18 +106,24 @@ export function registerSetWorkspaceTool(server: McpServer, context: ServerConte
         }
 
         const diagnostics = [];
-        const lastLoadResult = context.semanticIndex.getLastLoadResult();
-        if (lastLoadResult?.status === "schema_mismatch") {
+        for (const loadResult of context.semanticIndex.getLastLoadResults()) {
+          if (loadResult.result?.status !== "schema_mismatch") {
+            continue;
+          }
+
           diagnostics.push(createDiagnostic({
             code: "index_schema_mismatch",
-            message: "An older persisted index schema was discarded and rebuilt for this workspace.",
-            reason: `Expected schema ${lastLoadResult.expectedSchemaVersion} but found ${lastLoadResult.actualSchemaVersion}.`,
+            message: "An older persisted index schema was discarded and rebuilt for one configured workspace.",
+            reason: `Expected schema ${loadResult.result.expectedSchemaVersion} but found ${loadResult.result.actualSchemaVersion}.`,
             nextStep: "Reuse the rebuilt index for future searches or rerun set_workspace if you want to confirm the rebuilt snapshot.",
             severity: "warning",
             details: {
-              expectedSchemaVersion: lastLoadResult.expectedSchemaVersion,
-              actualSchemaVersion: lastLoadResult.actualSchemaVersion,
-              workspaceFingerprint: context.workspace.index.workspaceFingerprint,
+              root: loadResult.root,
+              expectedSchemaVersion: loadResult.result.expectedSchemaVersion,
+              actualSchemaVersion: loadResult.result.actualSchemaVersion,
+              workspaceFingerprint: context.workspace.workspaces
+                .find((workspace) => workspace.root === loadResult.root)?.index.workspaceFingerprint
+                ?? context.workspace.index.workspaceFingerprint,
             },
           }));
         }
@@ -117,7 +141,7 @@ export function registerSetWorkspaceTool(server: McpServer, context: ServerConte
           content: [
             {
               type: "text" as const,
-              text: `Workspace set to ${root}. Discovered ${payload.workspace.searchableFileCount} supported files and ${payload.workspace.unsupportedFileCount} unsupported files.${lastBuiltAt ? ` Index lastBuiltAt ${lastBuiltAt}.` : ""}${lastRefreshedAt ? ` lastRefreshedAt ${lastRefreshedAt}.` : ""}`,
+              text: `Workspace set to ${roots.length === 1 ? roots[0] : `${roots[0]} (+${roots.length - 1} more roots)`}. Discovered ${payload.workspace.searchableFileCount} supported files and ${payload.workspace.unsupportedFileCount} unsupported files.${lastBuiltAt ? ` Index lastBuiltAt ${lastBuiltAt}.` : ""}${lastRefreshedAt ? ` lastRefreshedAt ${lastRefreshedAt}.` : ""}`,
             },
           ],
           structuredContent: payload,
@@ -126,11 +150,12 @@ export function registerSetWorkspaceTool(server: McpServer, context: ServerConte
         const message = error instanceof Error ? error.message : String(error);
         const diagnostic = createDiagnostic({
           code: "workspace_root_invalid",
-          message: "Failed to resolve the requested workspace root.",
+          message: "Failed to resolve the requested workspace root configuration.",
           reason: message,
-          nextStep: "Pass an existing directory path to set_workspace and retry.",
+          nextStep: "Pass one or more existing directory paths to set_workspace and retry.",
           details: {
-            requestedRoot: input.root,
+            requestedRoot: input.root ?? null,
+            requestedRoots: input.roots?.join(", ") ?? null,
           },
         });
 

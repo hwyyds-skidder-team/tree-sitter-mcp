@@ -5,8 +5,14 @@ import path from "node:path";
 import test from "node:test";
 import { createLanguageRegistry } from "../src/languages/languageRegistry.js";
 import { registerBuiltinGrammars } from "../src/languages/registerBuiltinGrammars.js";
-import { discoverWorkspaceFiles } from "../src/workspace/discoverFiles.js";
-import { resolveWorkspacePath, resolveWorkspaceRoot } from "../src/workspace/resolveWorkspace.js";
+import { discoverConfiguredWorkspaces, discoverWorkspaceFiles } from "../src/workspace/discoverFiles.js";
+import {
+  findContainingWorkspaceRoot,
+  resolveConfiguredWorkspacePath,
+  resolveWorkspacePath,
+  resolveWorkspaceRoot,
+  resolveWorkspaceRoots,
+} from "../src/workspace/resolveWorkspace.js";
 import { mergeExclusions } from "../src/workspace/workspaceState.js";
 
 async function createWorkspaceFixture(): Promise<string> {
@@ -23,6 +29,15 @@ async function createWorkspaceFixture(): Promise<string> {
   await fs.writeFile(path.join(workspaceRoot, "docs", "notes.txt"), "plain text\n");
   await fs.writeFile(path.join(workspaceRoot, "generated", "artifact.ts"), "export const generated = true;\n");
   await fs.writeFile(path.join(workspaceRoot, "node_modules", "pkg", "index.js"), "module.exports = {};\n");
+  return workspaceRoot;
+}
+
+async function createDuplicatePathWorkspaceFixture(label: string): Promise<string> {
+  const workspaceRoot = await fs.mkdtemp(path.join(os.tmpdir(), `tree-sitter-mcp-workspace-${label}-`));
+  await fs.mkdir(path.join(workspaceRoot, "src"), { recursive: true });
+  await fs.mkdir(path.join(workspaceRoot, "docs"), { recursive: true });
+  await fs.writeFile(path.join(workspaceRoot, "src", "app.ts"), `export const app = ${JSON.stringify(label)};\n`);
+  await fs.writeFile(path.join(workspaceRoot, "docs", "notes.txt"), `${label} docs\n`);
   return workspaceRoot;
 }
 
@@ -53,5 +68,67 @@ test("workspace resolution rejects out-of-scope paths", async () => {
   assert.throws(
     () => resolveWorkspacePath(resolvedRoot, path.join("..", "outside.ts")),
     /escapes the configured workspace root/,
+  );
+});
+
+test("configured workspace discovery preserves workspaceRoot ownership for duplicate relative paths", async () => {
+  const registry = createLanguageRegistry();
+  registerBuiltinGrammars(registry);
+  const firstRoot = await createDuplicatePathWorkspaceFixture("first");
+  const secondRoot = await createDuplicatePathWorkspaceFixture("second");
+
+  const discovery = await discoverConfiguredWorkspaces(
+    [firstRoot, secondRoot],
+    mergeExclusions(["node_modules"]),
+    registry,
+  );
+
+  assert.deepEqual(discovery.workspaces.map((workspace) => workspace.root), [firstRoot, secondRoot]);
+  assert.deepEqual(
+    discovery.searchableFiles.map((file) => ({
+      workspaceRoot: file.workspaceRoot,
+      relativePath: file.relativePath,
+    })),
+    [
+      { workspaceRoot: firstRoot, relativePath: "src/app.ts" },
+      { workspaceRoot: secondRoot, relativePath: "src/app.ts" },
+    ],
+  );
+  assert.deepEqual(
+    discovery.unsupportedFiles.map((file) => ({
+      workspaceRoot: file.workspaceRoot,
+      relativePath: file.relativePath,
+    })),
+    [
+      { workspaceRoot: firstRoot, relativePath: "docs/notes.txt" },
+      { workspaceRoot: secondRoot, relativePath: "docs/notes.txt" },
+    ],
+  );
+});
+
+test("configured workspace resolution normalizes roots and resolves owned paths safely", async () => {
+  const firstRoot = await createWorkspaceFixture();
+  const secondRoot = await createDuplicatePathWorkspaceFixture("owned");
+  const resolvedRoots = await resolveWorkspaceRoots({
+    root: firstRoot,
+    roots: [secondRoot, firstRoot],
+  });
+
+  assert.deepEqual(resolvedRoots, [firstRoot, secondRoot]);
+  assert.equal(
+    findContainingWorkspaceRoot(resolvedRoots, path.join(secondRoot, "src", "app.ts")),
+    secondRoot,
+  );
+  assert.equal(
+    resolveConfiguredWorkspacePath(resolvedRoots, path.join(secondRoot, "src", "app.ts")),
+    path.join(secondRoot, "src", "app.ts"),
+  );
+  assert.equal(
+    resolveConfiguredWorkspacePath(resolvedRoots, "src/index.ts"),
+    path.join(firstRoot, "src", "index.ts"),
+  );
+  assert.throws(
+    () => resolveConfiguredWorkspacePath(resolvedRoots, path.join(firstRoot, "..", "outside.ts")),
+    /escapes the configured workspace roots/,
   );
 });

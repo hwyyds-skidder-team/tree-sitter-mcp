@@ -4,22 +4,34 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { loadRuntimeConfig } from "../src/config/runtimeConfig.js";
+import { PersistedIndexedFileRecordsSchema } from "../src/indexing/collectIndexedFileSemantics.js";
 import { createSemanticIndexCoordinator } from "../src/indexing/semanticIndexCoordinator.js";
 import type { IndexedFileSemanticRecord } from "../src/indexing/indexTypes.js";
 import { createWorkspaceFingerprint } from "../src/indexing/workspaceFingerprint.js";
 import { createServerContext } from "../src/server/serverContext.js";
 import { summarizeWorkspace } from "../src/workspace/workspaceState.js";
 
-function createRecord(workspaceRoot: string): IndexedFileSemanticRecord {
+function createRecord(
+  workspaceRoot: string,
+  relativePath = "src/index.ts",
+): IndexedFileSemanticRecord & { workspaceRoot: string } {
   return {
-    path: path.join(workspaceRoot, "src", "index.ts"),
-    relativePath: "src/index.ts",
+    workspaceRoot,
+    path: path.join(workspaceRoot, ...relativePath.split("/")),
+    relativePath,
     languageId: "typescript",
     grammarName: "typescript",
     contentHash: "sha1-index",
     symbolCount: 1,
     updatedAt: "2026-03-21T00:00:00.000Z",
   };
+}
+
+async function readPersistedRecords(indexRootDir: string, workspaceFingerprint: string) {
+  const recordsPath = path.join(indexRootDir, workspaceFingerprint, "records.json");
+  return PersistedIndexedFileRecordsSchema.parse(
+    JSON.parse(await fs.readFile(recordsPath, "utf8")) as unknown,
+  );
 }
 
 test("semantic index coordinator reports rebuilding during bootstrap and shapes workspace summaries", async () => {
@@ -104,4 +116,51 @@ test("semantic index coordinator marks degraded when persistence rejects an upda
   assert.equal(degradedSummary.state, "degraded");
   assert.equal(degradedSummary.degradedFileCount, 1);
   assert.equal(degradedSummary.indexedFileCount, 1);
+});
+
+test("semantic index coordinator replaceWorkspaces keeps duplicate relative paths isolated per root", async () => {
+  const indexRootDir = await fs.mkdtemp(path.join(os.tmpdir(), "tree-sitter-mcp-index-root-"));
+  const firstRoot = await fs.mkdtemp(path.join(os.tmpdir(), "tree-sitter-mcp-workspace-first-"));
+  const secondRoot = await fs.mkdtemp(path.join(os.tmpdir(), "tree-sitter-mcp-workspace-second-"));
+  const config = loadRuntimeConfig({
+    ...process.env,
+    TREE_SITTER_MCP_INDEX_DIR: indexRootDir,
+  });
+  const coordinator = createSemanticIndexCoordinator(config);
+  coordinator.replaceWorkspaces([
+    { root: firstRoot, exclusions: ["node_modules"] },
+    { root: secondRoot, exclusions: ["node_modules"] },
+  ]);
+
+  const summary = await coordinator.markFresh([
+    createRecord(firstRoot, "src/app.ts"),
+    createRecord(secondRoot, "src/app.ts"),
+  ]);
+  const workspaceSummaries = coordinator.getWorkspaceSummaries();
+  const firstFingerprint = createWorkspaceFingerprint({
+    root: firstRoot,
+    exclusions: ["node_modules"],
+    indexSchemaVersion: config.indexSchemaVersion,
+  });
+  const secondFingerprint = createWorkspaceFingerprint({
+    root: secondRoot,
+    exclusions: ["node_modules"],
+    indexSchemaVersion: config.indexSchemaVersion,
+  });
+
+  assert.equal(summary.state, "fresh");
+  assert.equal(summary.indexedFileCount, 2);
+  assert.deepEqual(workspaceSummaries.map((workspace) => workspace.root), [firstRoot, secondRoot]);
+  assert.deepEqual(
+    workspaceSummaries.map((workspace) => workspace.summary.indexedFileCount),
+    [1, 1],
+  );
+
+  const firstRecords = await readPersistedRecords(indexRootDir, firstFingerprint);
+  const secondRecords = await readPersistedRecords(indexRootDir, secondFingerprint);
+
+  assert.deepEqual(firstRecords.map((record) => record.relativePath), ["src/app.ts"]);
+  assert.deepEqual(secondRecords.map((record) => record.relativePath), ["src/app.ts"]);
+  assert.equal(firstRecords[0]?.workspaceRoot, firstRoot);
+  assert.equal(secondRecords[0]?.workspaceRoot, secondRoot);
 });

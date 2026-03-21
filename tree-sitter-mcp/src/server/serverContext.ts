@@ -4,6 +4,7 @@ import { createLanguageRegistry, type LanguageRegistry } from "../languages/lang
 import { registerBuiltinGrammars } from "../languages/registerBuiltinGrammars.js";
 import { listSupportedQueryTypes } from "../queries/queryCatalog.js";
 import {
+  applyWorkspaceEntryIndexSummaries,
   applyWorkspaceIndexSummary,
   createWorkspaceState,
   type WorkspaceState,
@@ -21,14 +22,29 @@ export interface ServerContext {
 export function createServerContext(config: RuntimeConfig): ServerContext {
   const languageRegistry = createLanguageRegistry();
   const workspace = createWorkspaceState(config.defaultExclusions);
-  const semanticIndex = createSemanticIndexCoordinator(config, {
+  let semanticIndex!: SemanticIndexCoordinator;
+  semanticIndex = createSemanticIndexCoordinator(config, {
     onSummaryChange(summary) {
       applyWorkspaceIndexSummary(workspace, summary);
+      applyWorkspaceEntryIndexSummaries(
+        workspace,
+        semanticIndex.getWorkspaceSummaries().map((entry) => ({
+          root: entry.root,
+          index: entry.summary,
+        })),
+      );
     },
   });
 
   registerBuiltinGrammars(languageRegistry);
   applyWorkspaceIndexSummary(workspace, semanticIndex.getSummary());
+  applyWorkspaceEntryIndexSummaries(
+    workspace,
+    semanticIndex.getWorkspaceSummaries().map((entry) => ({
+      root: entry.root,
+      index: entry.summary,
+    })),
+  );
 
   return {
     config,

@@ -22,6 +22,20 @@ async function createWorkspaceFixture(): Promise<string> {
   return workspaceRoot;
 }
 
+async function createFederatedWorkspaceFixtures(): Promise<[string, string]> {
+  const firstRoot = await fs.mkdtemp(path.join(os.tmpdir(), "tree-sitter-mcp-capabilities-first-"));
+  const secondRoot = await fs.mkdtemp(path.join(os.tmpdir(), "tree-sitter-mcp-capabilities-second-"));
+
+  await fs.mkdir(path.join(firstRoot, "src"), { recursive: true });
+  await fs.mkdir(path.join(secondRoot, "src"), { recursive: true });
+  await fs.writeFile(path.join(firstRoot, "src", "app.ts"), "export const app = 'first';\n");
+  await fs.writeFile(path.join(secondRoot, "src", "app.ts"), "export const app = 'second';\n");
+  await fs.writeFile(path.join(firstRoot, "README.md"), "first docs\n");
+  await fs.writeFile(path.join(secondRoot, "README.md"), "second docs\n");
+
+  return [firstRoot, secondRoot];
+}
+
 test("capabilities and health expose parser mode, languages, workspace root, and exclusion constraints", async () => {
   const workspaceRoot = await createWorkspaceFixture();
   const indexRootDir = await fs.mkdtemp(path.join(os.tmpdir(), "tree-sitter-mcp-capabilities-index-"));
@@ -52,7 +66,12 @@ test("capabilities and health expose parser mode, languages, workspace root, and
       supportedLanguages: Array<{ id: string }>;
       supportedQueryTypes: string[];
       toolNames: string[];
-      workspace: { root: string | null; index: { indexMode: string; workspaceFingerprint: string | null } };
+      workspace: {
+        root: string | null;
+        roots: string[];
+        workspaceCount: number;
+        index: { indexMode: string; workspaceFingerprint: string | null };
+      };
     };
     assert.equal(capabilities.parserMode, "on_demand");
     assert.equal(capabilities.indexMode, "persistent_disk");
@@ -74,6 +93,8 @@ test("capabilities and health expose parser mode, languages, workspace root, and
     assert.ok(capabilities.toolNames.includes("resolve_definition"));
     assert.ok(capabilities.toolNames.includes("search_references"));
     assert.equal(capabilities.workspace.root, null);
+    assert.deepEqual(capabilities.workspace.roots, []);
+    assert.equal(capabilities.workspace.workspaceCount, 0);
     assert.equal(capabilities.workspace.index.indexMode, "persistent_disk");
     assert.equal(capabilities.workspace.index.workspaceFingerprint, null);
 
@@ -121,6 +142,9 @@ test("capabilities and health expose parser mode, languages, workspace root, and
     const workspacePayload = setWorkspaceResult.structuredContent as {
       workspace: {
         root: string | null;
+        roots: string[];
+        workspaceCount: number;
+        workspaces: Array<{ root: string }>;
         searchableFileCount: number;
         unsupportedFileCount: number;
         exclusions: string[];
@@ -133,6 +157,9 @@ test("capabilities and health expose parser mode, languages, workspace root, and
       };
     };
     assert.equal(workspacePayload.workspace.root, workspaceRoot);
+    assert.deepEqual(workspacePayload.workspace.roots, [workspaceRoot]);
+    assert.equal(workspacePayload.workspace.workspaceCount, 1);
+    assert.deepEqual(workspacePayload.workspace.workspaces.map((workspace) => workspace.root), [workspaceRoot]);
     assert.equal(workspacePayload.workspace.searchableFileCount, 1);
     assert.equal(workspacePayload.workspace.unsupportedFileCount, 1);
     assert.ok(workspacePayload.workspace.exclusions.includes("generated"));
@@ -151,6 +178,8 @@ test("capabilities and health expose parser mode, languages, workspace root, and
       supportedQueryTypes: string[];
       workspace: {
         root: string | null;
+        roots: string[];
+        workspaceCount: number;
         searchableFileCount: number;
         unsupportedFileCount: number;
         index: { workspaceFingerprint: string | null; indexMode: string };
@@ -168,6 +197,8 @@ test("capabilities and health expose parser mode, languages, workspace root, and
       "call_site_search",
     ]);
     assert.equal(readyHealth.workspace.root, workspaceRoot);
+    assert.deepEqual(readyHealth.workspace.roots, [workspaceRoot]);
+    assert.equal(readyHealth.workspace.workspaceCount, 1);
     assert.equal(readyHealth.workspace.searchableFileCount, 1);
     assert.equal(readyHealth.workspace.unsupportedFileCount, 1);
     assert.equal(readyHealth.workspace.index.indexMode, "persistent_disk");
@@ -176,6 +207,108 @@ test("capabilities and health expose parser mode, languages, workspace root, and
       workspacePayload.workspace.index.workspaceFingerprint,
     );
     assert.deepEqual(readyHealth.unsupportedFilesSample.map((file) => file.relativePath), ["README.md"]);
+  } finally {
+    await client.close().catch(() => undefined);
+    await transport.close().catch(() => undefined);
+  }
+});
+
+test("capabilities and health expose ordered roots for multi-root set_workspace bootstraps", async () => {
+  const [firstRoot, secondRoot] = await createFederatedWorkspaceFixtures();
+  const indexRootDir = await fs.mkdtemp(path.join(os.tmpdir(), "tree-sitter-mcp-capabilities-index-"));
+  const client = new Client({
+    name: "tree-sitter-mcp-capabilities-multi-root-test",
+    version: "0.1.0",
+  });
+  const transport = new StdioClientTransport({
+    command: process.execPath,
+    args: [serverEntry],
+    cwd: packageRoot,
+    env: {
+      ...(process.env as Record<string, string>),
+      TREE_SITTER_MCP_INDEX_DIR: indexRootDir,
+    },
+  });
+
+  try {
+    await client.connect(transport);
+
+    const setWorkspaceResult = await client.callTool({
+      name: "set_workspace",
+      arguments: {
+        roots: [firstRoot, secondRoot],
+      },
+    });
+    const workspacePayload = setWorkspaceResult.structuredContent as {
+      workspace: {
+        root: string | null;
+        roots: string[];
+        workspaceCount: number;
+        workspaces: Array<{ root: string; searchableFileCount: number }>;
+        searchableFileCount: number;
+        unsupportedFileCount: number;
+      };
+      searchableFilesSample: Array<{ workspaceRoot: string; relativePath: string }>;
+    };
+
+    assert.equal(workspacePayload.workspace.root, firstRoot);
+    assert.deepEqual(workspacePayload.workspace.roots, [firstRoot, secondRoot]);
+    assert.equal(workspacePayload.workspace.workspaceCount, 2);
+    assert.deepEqual(
+      workspacePayload.workspace.workspaces.map((workspace) => workspace.root),
+      [firstRoot, secondRoot],
+    );
+    assert.deepEqual(
+      workspacePayload.workspace.workspaces.map((workspace) => workspace.searchableFileCount),
+      [1, 1],
+    );
+    assert.equal(workspacePayload.workspace.searchableFileCount, 2);
+    assert.equal(workspacePayload.workspace.unsupportedFileCount, 2);
+    assert.deepEqual(
+      workspacePayload.searchableFilesSample.map((file) => ({
+        workspaceRoot: file.workspaceRoot,
+        relativePath: file.relativePath,
+      })),
+      [
+        { workspaceRoot: firstRoot, relativePath: "src/app.ts" },
+        { workspaceRoot: secondRoot, relativePath: "src/app.ts" },
+      ],
+    );
+
+    const capabilitiesResult = await client.callTool({
+      name: "get_capabilities",
+      arguments: {},
+    });
+    const capabilities = capabilitiesResult.structuredContent as {
+      workspace: {
+        root: string | null;
+        roots: string[];
+        workspaceCount: number;
+      };
+    };
+    assert.equal(capabilities.workspace.root, firstRoot);
+    assert.deepEqual(capabilities.workspace.roots, [firstRoot, secondRoot]);
+    assert.equal(capabilities.workspace.workspaceCount, 2);
+
+    const healthResult = await client.callTool({
+      name: "get_health",
+      arguments: {},
+    });
+    const health = healthResult.structuredContent as {
+      workspace: {
+        root: string | null;
+        roots: string[];
+        workspaceCount: number;
+        workspaces: Array<{ root: string }>;
+      };
+    };
+    assert.equal(health.workspace.root, firstRoot);
+    assert.deepEqual(health.workspace.roots, [firstRoot, secondRoot]);
+    assert.equal(health.workspace.workspaceCount, 2);
+    assert.deepEqual(
+      health.workspace.workspaces.map((workspace) => workspace.root),
+      [firstRoot, secondRoot],
+    );
   } finally {
     await client.close().catch(() => undefined);
     await transport.close().catch(() => undefined);
