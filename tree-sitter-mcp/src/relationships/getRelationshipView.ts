@@ -479,18 +479,49 @@ async function resolveReferencedDefinition(
   reference: ReferenceMatch,
   resolveCache: Map<string, Promise<DefinitionMatch | null>>,
 ): Promise<DefinitionMatch | null> {
-  const cacheKey = JSON.stringify([reference.name, reference.languageId]);
+  const cacheKey = JSON.stringify([
+    reference.name,
+    reference.languageId,
+    reference.workspaceRoot,
+    reference.relativePath,
+  ]);
   const cached = resolveCache.get(cacheKey);
   if (cached) {
     return cached;
   }
 
-  const pending = resolveDefinition(context, {
-    lookup: {
-      name: reference.name,
-      languageId: reference.languageId,
-    },
-  }).then((result) => result.match);
+  const pending = (async () => {
+    const sameFileMatch = await resolveDefinition(context, {
+      lookup: {
+        name: reference.name,
+        languageId: reference.languageId,
+        workspaceRoot: reference.workspaceRoot,
+        relativePath: reference.relativePath,
+      },
+    });
+    if (sameFileMatch.match) {
+      return sameFileMatch.match;
+    }
+
+    const sameWorkspaceMatch = await resolveDefinition(context, {
+      lookup: {
+        name: reference.name,
+        languageId: reference.languageId,
+        workspaceRoot: reference.workspaceRoot,
+      },
+    });
+    if (sameWorkspaceMatch.match) {
+      return sameWorkspaceMatch.match;
+    }
+
+    const globalMatch = await resolveDefinition(context, {
+      lookup: {
+        name: reference.name,
+        languageId: reference.languageId,
+      },
+    });
+    return globalMatch.match;
+  })();
   resolveCache.set(cacheKey, pending);
   return pending;
 }
