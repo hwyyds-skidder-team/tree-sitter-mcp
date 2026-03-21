@@ -44,6 +44,9 @@ test("compiled server bootstraps over stdio and lists tools", async () => {
     assert.ok(toolNames.has("resolve_definition"));
     assert.ok(toolNames.has("search_references"));
     assert.ok(toolNames.has("get_relationship_view"));
+    const relationshipTool = listed.tools.find((tool) => tool.name === "get_relationship_view");
+    assert.equal(relationshipTool?.name, "get_relationship_view");
+    assert.match(relationshipTool?.description ?? "", /read-only impact hop/i);
 
     const callResult = await client.callTool({
       name: "tree_sitter_get_server_info",

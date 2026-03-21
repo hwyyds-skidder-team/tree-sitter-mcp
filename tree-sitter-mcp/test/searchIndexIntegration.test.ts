@@ -5,6 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import { loadRuntimeConfig } from "../src/config/runtimeConfig.js";
 import { searchDefinitions } from "../src/definitions/searchDefinitions.js";
+import { getRelationshipView } from "../src/relationships/getRelationshipView.js";
 import { searchReferences } from "../src/references/searchReferences.js";
 import { createServerContext } from "../src/server/serverContext.js";
 import { discoverConfiguredWorkspaces } from "../src/workspace/discoverFiles.js";
@@ -186,6 +187,91 @@ test("degraded refresh drops stale definitions and references for a broken chang
   assert.equal(degradedReferences.diagnostic?.code, "definition_not_found");
   assert.ok(degradedReferences.diagnostics.some((diagnostic) =>
     diagnostic.code === "parse_failed" && diagnostic.relativePath === "src/app.ts"));
+  assert.equal(context.workspace.index.state, "degraded");
+});
+
+test("get_relationship_view refreshes and degrades instead of serving stale relationship edges", async () => {
+  const workspaceRoot = await fs.mkdtemp(path.join(os.tmpdir(), "tree-sitter-mcp-index-relationships-"));
+  const indexRootDir = await fs.mkdtemp(path.join(os.tmpdir(), "tree-sitter-mcp-index-store-"));
+  await fs.mkdir(path.join(workspaceRoot, "src"), { recursive: true });
+  await fs.writeFile(path.join(workspaceRoot, "src", "app.ts"), [
+    "export function greetUser(name: string): string {",
+    "  return name;",
+    "}",
+    "",
+  ].join("\n"));
+  await fs.writeFile(path.join(workspaceRoot, "src", "use.ts"), [
+    "import { greetUser } from './app';",
+    "export function run(): string {",
+    "  const current = greetUser;",
+    "  return greetUser('ok');",
+    "}",
+    "",
+  ].join("\n"));
+
+  const context = await createPreparedContext(workspaceRoot, indexRootDir);
+
+  const initialRelationships = await getRelationshipView(context, {
+    lookup: {
+      name: "greetUser",
+      languageId: "typescript",
+      kind: "function",
+    },
+  });
+  assert.equal(initialRelationships.diagnostic, null);
+  assert.equal(initialRelationships.freshness.state, "fresh");
+  assert.deepEqual(
+    initialRelationships.edges.map((edge) => `${edge.relationshipKind}:${edge.relatedSymbol.name}`),
+    [
+      "incoming_call:run",
+    ],
+  );
+
+  await fs.writeFile(path.join(workspaceRoot, "src", "use.ts"), [
+    "import { greetUser } from './app';",
+    "export function run(): string {",
+    "  const current = greetUser;",
+    "  return greetUser('ok');",
+    "}",
+    "export function rerun(): string {",
+    "  return greetUser('again');",
+    "}",
+    "",
+  ].join("\n"));
+
+  const refreshedRelationships = await getRelationshipView(context, {
+    lookup: {
+      name: "greetUser",
+      languageId: "typescript",
+      kind: "function",
+    },
+  });
+  assert.equal(refreshedRelationships.diagnostic, null);
+  assert.equal(refreshedRelationships.freshness.state, "refreshed");
+  assert.deepEqual(refreshedRelationships.freshness.refreshedFiles, ["src/use.ts"]);
+  assert.deepEqual(
+    refreshedRelationships.edges.map((edge) => `${edge.relationshipKind}:${edge.relatedSymbol.name}`),
+    [
+      "incoming_call:run",
+      "incoming_call:rerun",
+    ],
+  );
+
+  await fs.writeFile(path.join(workspaceRoot, "src", "use.ts"), "export function run( {\n");
+
+  const degradedRelationships = await getRelationshipView(context, {
+    lookup: {
+      name: "greetUser",
+      languageId: "typescript",
+      kind: "function",
+    },
+  });
+  assert.equal(degradedRelationships.diagnostic, null);
+  assert.equal(degradedRelationships.edges.length, 0);
+  assert.equal(degradedRelationships.freshness.state, "degraded");
+  assert.deepEqual(degradedRelationships.freshness.degradedFiles, ["src/use.ts"]);
+  assert.ok(degradedRelationships.diagnostics.some((diagnostic) =>
+    diagnostic.code === "parse_failed" && diagnostic.relativePath === "src/use.ts"));
   assert.equal(context.workspace.index.state, "degraded");
 });
 

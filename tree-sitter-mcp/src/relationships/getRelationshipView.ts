@@ -114,8 +114,10 @@ export async function getRelationshipView(
     };
   }
 
+  const freshIndex = await context.semanticIndex.getFreshRecords(context);
+  const diagnostics = [...freshIndex.diagnostics];
   const targetResult = await resolveDefinition(context, targetRequest);
-  const diagnostics = [...targetResult.diagnostics];
+  diagnostics.push(...targetResult.diagnostics);
 
   if (!targetResult.match) {
     return {
@@ -123,7 +125,7 @@ export async function getRelationshipView(
       filters: fallbackFilters,
       edges: [],
       pagination: emptyPagination,
-      freshness: createFallbackFreshness(context),
+      freshness: freshIndex.freshness,
       diagnostic: targetResult.diagnostic,
       diagnostics: dedupeDiagnostics(diagnostics),
       searchedFiles: 0,
@@ -163,7 +165,7 @@ export async function getRelationshipView(
       filters: emptyResult.filters,
       edges: emptyResult.edges,
       pagination: emptyResult.pagination,
-      freshness: createFallbackFreshness(context),
+      freshness: freshIndex.freshness,
       diagnostic: normalizedFiltersResult.diagnostic,
       diagnostics: dedupeDiagnostics(diagnostics),
       searchedFiles: 0,
@@ -172,8 +174,6 @@ export async function getRelationshipView(
     };
   }
 
-  const freshIndex = await context.semanticIndex.getFreshRecords(context);
-  diagnostics.push(...freshIndex.diagnostics);
   const traversalState: TraversalState = {
     diagnostics,
     searchableFiles: new Map<string, SearchableRelationshipFile>(),

@@ -305,6 +305,8 @@ test("capabilities and health expose ordered roots for multi-root set_workspace 
         workspaceCount: number;
         workspaces: Array<{ root: string; index: { workspaceFingerprint: string | null } }>;
       };
+      supportedQueryTypes: string[];
+      toolNames: string[];
     };
     assert.equal(capabilities.workspace.root, firstRoot);
     assert.deepEqual(capabilities.workspace.roots, [firstRoot, secondRoot]);
@@ -314,12 +316,16 @@ test("capabilities and health expose ordered roots for multi-root set_workspace 
       [firstRoot, secondRoot],
     );
     assert.ok(capabilities.workspace.workspaces.every((workspace) => workspace.index.workspaceFingerprint));
+    assert.ok(capabilities.supportedQueryTypes.includes("relationship_view"));
+    assert.ok(capabilities.toolNames.includes("get_relationship_view"));
 
     const healthResult = await client.callTool({
       name: "get_health",
       arguments: {},
     });
     const health = healthResult.structuredContent as {
+      supportedQueryTypes: string[];
+      toolNames: string[];
       workspace: {
         root: string | null;
         roots: string[];
@@ -337,6 +343,8 @@ test("capabilities and health expose ordered roots for multi-root set_workspace 
       [firstRoot, secondRoot],
     );
     assert.ok(health.workspace.workspaces.every((workspace) => workspace.index.workspaceFingerprint));
+    assert.ok(health.supportedQueryTypes.includes("relationship_view"));
+    assert.ok(health.toolNames.includes("get_relationship_view"));
   } finally {
     await client.close().catch(() => undefined);
     await transport.close().catch(() => undefined);
