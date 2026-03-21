@@ -7,7 +7,7 @@
 
 ## Current Status
 
-Phase 04 is ready for discussion/planning. `v1.1` now maps 10 search-centric requirements across 3 phases with 100% coverage.
+Phase 04 is now executing with `04-01` complete. `v1.1` currently has 1 of 3 Phase 4 plans summarized and remains focused on search-centric performance, reach, and depth improvements.
 
 ## Overview
 
@@ -33,7 +33,7 @@ Phase 04 is ready for discussion/planning. `v1.1` now maps 10 search-centric req
 **Plans**: 3 plans
 
 Plans:
-- [ ] 04-01: Design persistent semantic state, storage boundaries, and invalidation rules.
+- [x] 04-01: Design persistent semantic state, storage boundaries, and invalidation rules.
 - [ ] 04-02: Implement index/cache build, reuse, and targeted refresh paths for repeated queries.
 - [ ] 04-03: Surface freshness diagnostics and add regression coverage for stale-result prevention.
 
@@ -76,7 +76,7 @@ Phases execute in numeric order: 4 → 5 → 6
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 4. Persistent Indexing and Query Freshness | v1.1 | 0/3 | Not started | - |
+| 4. Persistent Indexing and Query Freshness | v1.1 | 1/3 | In Progress | - |
 | 5. Multi-Workspace Search and Result Quality | v1.1 | 0/3 | Not started | - |
 | 6. Relationship Views and Impact Discovery | v1.1 | 0/3 | Not started | - |
 
