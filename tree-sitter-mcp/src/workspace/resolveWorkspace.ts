@@ -1,6 +1,11 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
+export interface ResolveWorkspaceRootsInput {
+  root?: string | null;
+  roots?: string[] | null;
+}
+
 export function normalizeAbsolutePath(targetPath: string): string {
   return path.normalize(path.resolve(targetPath));
 }
@@ -24,6 +29,34 @@ export async function resolveWorkspaceRoot(targetRoot: string): Promise<string> 
   }
 
   return resolvedRoot;
+}
+
+export async function resolveWorkspaceRoots(
+  input: ResolveWorkspaceRootsInput,
+): Promise<string[]> {
+  const configuredRoots = [
+    ...(input.root ? [input.root] : []),
+    ...(input.roots ?? []),
+  ];
+
+  if (configuredRoots.length === 0) {
+    throw new Error("At least one workspace root is required.");
+  }
+
+  const resolvedRoots: string[] = [];
+  const seen = new Set<string>();
+
+  for (const configuredRoot of configuredRoots) {
+    const resolvedRoot = await resolveWorkspaceRoot(configuredRoot);
+    if (seen.has(resolvedRoot)) {
+      continue;
+    }
+
+    seen.add(resolvedRoot);
+    resolvedRoots.push(resolvedRoot);
+  }
+
+  return resolvedRoots;
 }
 
 export function isPathInsideWorkspace(root: string, candidatePath: string): boolean {
@@ -54,6 +87,60 @@ export function resolveWorkspacePath(root: string, targetPath: string): string {
 export function normalizeWorkspaceRelativePath(root: string, targetPath: string): string | null {
   const relativePath = relativeToWorkspace(root, resolveWorkspacePath(root, targetPath));
   return relativePath === "." ? null : relativePath;
+}
+
+export function findContainingWorkspaceRoot(
+  configuredRoots: readonly string[],
+  absolutePath: string,
+): string | null {
+  const trimmedPath = absolutePath.trim();
+  if (trimmedPath.length === 0) {
+    throw new Error("Path is required.");
+  }
+
+  if (!isAbsolutePathLike(trimmedPath)) {
+    throw new Error(`Path must be absolute: ${absolutePath}`);
+  }
+
+  const normalizedCandidate = normalizeAbsolutePathLike(trimmedPath);
+  let owner: string | null = null;
+
+  for (const root of configuredRoots) {
+    if (!isPathInsideWorkspace(root, normalizedCandidate)) {
+      continue;
+    }
+
+    if (owner === null || normalizeAbsolutePath(root).length > normalizeAbsolutePath(owner).length) {
+      owner = root;
+    }
+  }
+
+  return owner;
+}
+
+export function resolveConfiguredWorkspacePath(
+  configuredRoots: readonly string[],
+  targetPath: string,
+): string {
+  const trimmedPath = targetPath.trim();
+  if (trimmedPath.length === 0) {
+    throw new Error("Path is required.");
+  }
+
+  if (configuredRoots.length === 0) {
+    throw new Error("A configured workspace root is required.");
+  }
+
+  if (isAbsolutePathLike(trimmedPath)) {
+    const resolvedPath = normalizeAbsolutePathLike(trimmedPath);
+    if (!findContainingWorkspaceRoot(configuredRoots, resolvedPath)) {
+      throw new Error(`Path escapes the configured workspace roots: ${targetPath}`);
+    }
+
+    return resolvedPath;
+  }
+
+  return resolveWorkspacePath(configuredRoots[0], trimmedPath);
 }
 
 export function relativeToWorkspace(root: string, targetPath: string): string {
