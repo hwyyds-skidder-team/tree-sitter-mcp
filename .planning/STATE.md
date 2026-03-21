@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Search Depth and Scale
 status: executing
-stopped_at: Completed 05-02-PLAN.md
-last_updated: "2026-03-21T09:12:21Z"
+stopped_at: Completed 05-VERIFICATION.md
+last_updated: "2026-03-21T13:04:30Z"
 progress:
   total_phases: 3
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 6
-  completed_plans: 3
+  completed_plans: 4
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-21)
 
 **Core Value:** An AI agent can quickly find the right code symbols, definitions, references, and related source regions in a workspace without relying on brittle grep-style text search.
-**Current Focus:** Phase 05 — multi-workspace-search-and-result-quality
+**Current Focus:** Phase 04 — persistent-indexing-and-query-freshness
 
 ## Current Position
 
-Phase: 05 (multi-workspace-search-and-result-quality) — EXECUTING
-Plan: 3 of 3
+Phase: 04 (persistent-indexing-and-query-freshness) — READY TO RESUME
+Plan: 2 of 3
 
 ## Decisions Made
 
@@ -54,6 +54,9 @@ Plan: 3 of 3
 - [Phase 05]: Use workspaceRoot ownership plus { workspaceRoot, relativePath } record identity so duplicate paths stay distinct across repositories.
 - [Phase 05]: Normalize `workspaceRoots` filtering centrally so definition and reference backends preserve the same path/language/kind narrowing behavior across multiple roots.
 - [Phase 05]: Require explicit `workspaceRoot` for ambiguous follow-up navigation instead of guessing the first configured root. — This keeps `list_file_symbols` and `resolve_definition` precise when two repositories share the same relative path or symbol name.
+- [Phase 05]: Apply one shared exact/prefix/contains ranking helper before truncation so federated symbol and definition searches stay deterministic across roots.
+- [Phase 05]: Expose additive `workspaceRoots` and `workspaceBreakdown` metadata on broad search tools while keeping single-workspace text compact for existing callers.
+- [Execution]: Resume unfinished Phase 04 work before planning Phase 06, even though Phase 05 is complete, because freshness diagnostics are still partially outstanding.
 
 ## Pending Todos
 
@@ -69,10 +72,11 @@ None.
 |-------|------|----------|-------|-------|-----------|
 | 04 | 01 | 3 min | 3 | 9 | 2026-03-21 |
 | 05 | 01 | 22 min | 3 | 12 | 2026-03-21 |
-| 05 | 02 | 16 min | 3 | 14 | 2026-03-21 |
+| 05 | 02 | 16 min | 3 | 15 | 2026-03-21 |
+| 05 | 03 | 3 hr 30 min | 3 | 13 | 2026-03-21 |
 
 ## Session
 
-**Last Date:** 2026-03-21T09:12:21Z
-**Stopped At:** Completed 05-02-PLAN.md
-**Resume File:** .planning/phases/05-multi-workspace-search-and-result-quality/05-03-PLAN.md
+**Last Date:** 2026-03-21T13:04:30Z
+**Stopped At:** Completed Phase 05 multi-workspace verification
+**Resume File:** .planning/phases/04-persistent-indexing-and-query-freshness/04-02-PLAN.md

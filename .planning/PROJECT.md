@@ -2,7 +2,7 @@
 
 ## What This Is
 
-`tree-sitter-mcp` is a standalone MCP server/CLI for AI coding agents that need semantic code search over local workspaces. After shipping v1.0 read-only semantic search over stdio, the next milestone is now focused on making search itself faster, broader, and more insightful rather than expanding transports first.
+`tree-sitter-mcp` is a standalone MCP server/CLI for AI coding agents that need semantic code search over local workspaces. After shipping v1.0 read-only semantic search over stdio, the current milestone is focused on making search itself faster, broader, and more insightful before any HTTP expansion.
 
 ## Core Value
 
@@ -11,10 +11,10 @@ An AI agent can quickly find the right code symbols, definitions, references, an
 ## Current State
 
 - **Shipped milestone:** `v1.0 Semantic Search` archived and tagged on 2026-03-21 after implementation completed on 2026-03-15.
-- **Planning status:** `v1.1 Search Depth and Scale` defined on 2026-03-21 and ready for Phase 04 planning.
-- **Product surface:** standalone MCP server with local stdio transport, workspace discovery, exclusion controls, capability/health inspection, symbol listing, definition search/resolution, and reference search.
-- **Codebase shape:** ~5,428 lines of TypeScript across `tree-sitter-mcp/src/` and `tree-sitter-mcp/test/`, with 15 test suites and a packaged `tree-sitter-mcp` CLI entrypoint.
-- **Execution history:** 3 phases, 9 recorded plans, and 27 recorded plan tasks completed for the first shipped milestone.
+- **Planning status:** `v1.1 Search Depth and Scale` is in active execution; Phase 05 multi-workspace search completed on 2026-03-21 while Phase 04 freshness diagnostics still has remaining work.
+- **Product surface:** standalone MCP server with local stdio transport, persistent index reuse, capability/health inspection, workspace discovery, multi-workspace symbol/definition/reference search, workspace-aware narrowing, deterministic federated ranking, and machine-readable per-workspace result breakdowns.
+- **Codebase shape:** TypeScript package under `tree-sitter-mcp/` with dedicated regression coverage for stdio tools, indexing, workspace discovery, and federated multi-workspace search behavior.
+- **Execution history:** v1.0 shipped end-to-end, Phase 04 began the persistent-index milestone work, and Phase 05 is now fully implemented and verified ahead of relationship-view planning.
 
 ## Current Milestone: v1.1 Search Depth and Scale
 
@@ -32,11 +32,11 @@ An AI agent can quickly find the right code symbols, definitions, references, an
 - ✓ Expose read-only MCP search tools for symbol-aware code discovery in a local workspace — v1.0
 - ✓ Use Tree-sitter parsing to power definitions, references, snippets, and stable source ranges for semantic search — v1.0
 - ✓ Keep the first release optimized for AI-agent workflows with structured payloads, pagination, and low operational complexity — v1.0
+- ✓ Expand search across multiple workspaces while preserving clear workspace attribution and narrowing controls — Validated in Phase 05 on 2026-03-21
 
 ### Active
 
 - [ ] Reuse persistent semantic state so repeated searches stay fast without hiding freshness from the caller.
-- [ ] Expand search across multiple workspaces while preserving clear workspace attribution and narrowing controls.
 - [ ] Add relationship-aware retrieval so agents can inspect direct dependencies and likely impact around a symbol.
 
 ### Out of Scope
@@ -48,9 +48,9 @@ An AI agent can quickly find the right code symbols, definitions, references, an
 
 ## Context
 
-`tree-sitter-mcp` now ships as a dedicated Node 22+/TypeScript package built on `@modelcontextprotocol/sdk`, `tree-sitter`, builtin JavaScript/TypeScript/TSX/Python grammars, and `zod` schemas for tool contracts. The shipped v1 architecture is intentionally local-first and index-free: a client sets a workspace root, the server discovers supported files with deterministic exclusions, and semantic tools parse only the files needed for the current request.
+`tree-sitter-mcp` now ships as a dedicated Node 22+/TypeScript package built on `@modelcontextprotocol/sdk`, `tree-sitter`, builtin JavaScript/TypeScript/TSX/Python grammars, and `zod` schemas for tool contracts. The v1 foundation already proved that an MCP client can bootstrap the server, inspect its capabilities, search for definitions or references, and chain structured results into later agent steps without mutating the workspace.
 
-No formal external user-feedback log exists yet, but the shipped milestone validated the core workflow the project set out to prove: an MCP client can bootstrap the server, inspect its capabilities, search for definitions or references, and chain structured results into later agent steps without mutating the workspace. This milestone is intentionally narrower and more search-centric than the earlier draft: fix repeated-query performance, widen semantic search reach across workspace boundaries, and surface richer relationship information before spending effort on new transports.
+The active milestone stays intentionally search-centric: persistent semantic state improves repeat-query performance, Phase 05 now proves federated search across multiple roots with stable ranking and explainable payloads, and the remaining milestone work can build relationship-aware retrieval on top of that stronger base.
 
 ## Constraints
 
@@ -68,18 +68,14 @@ No formal external user-feedback log exists yet, but the shipped milestone valid
 |----------|-----------|---------|
 | Start with a standalone MCP server/package in `tree-sitter-mcp` | Matches the requested deliverable and keeps the integration reusable across MCP clients | ✓ Shipped in v1.0 |
 | Prefer stdio-first local transport for v1 | Best fit for local AI-agent workflows and lowest initial deployment complexity | ✓ Shipped in v1.0 |
-| Use on-demand parsing instead of a persistent index | Reduces setup and state-management complexity for the first release | ⚠ Revisit when repeated-query performance becomes a bottleneck |
+| Use on-demand parsing instead of a persistent index | Reduced setup complexity for the first release | ✓ Shipped in v1.0, later expanded with persistent indexing in v1.1 |
 | Enforce deterministic workspace exclusions before semantic queries | Keeps dependency, vendored, and generated paths out of user-facing results | ✓ Shipped in v1.0 |
 | Expose capabilities and health as explicit MCP tools | Makes the server debuggable before deeper semantic workflows exist | ✓ Shipped in v1.0 |
 | Return structured diagnostics for unsupported files and parse failures | Prevents silent skips and keeps agent workflows actionable | ✓ Shipped in v1.0 |
-| Keep definition search layered on the Phase 1 parser and workspace snapshot | Preserves the no-index, local-only architecture while adding richer retrieval | ✓ Shipped in v1.0 |
-| Normalize definition payloads through a dedicated schema and shared filter layer | Keeps tool-facing metadata and narrowing semantics consistent across languages | ✓ Shipped in v1.0 |
-| Expose `search_definitions` and `resolve_definition` as read-only tools | Completes the user-facing definition workflow without introducing writes or indexing | ✓ Shipped in v1.0 |
-| Keep `search_references` as a thin MCP adapter over the shared backend | Preserves one source of truth for diagnostics, context shaping, and pagination | ✓ Shipped in v1.0 |
-| Package startup through a `bin` entry while keeping docs stdio-first | Makes local launch easier without implying unsupported transports | ✓ Shipped in v1.0 |
-| Refocus v1.1 on search improvements before transport expansion | User priority is stronger search, not more connection options | — Pending |
-| Pair persistent indexing with multi-workspace search in v1.1 | Both features need shared workspace-state and freshness-tracking primitives | — Pending |
-| Start relationship views with direct semantic links instead of whole-program graphs | Reuse the existing definition/reference pipeline before attempting heavier analysis | — Pending |
+| Keep definition/reference workflows layered on shared backend normalization | Preserves one source of truth for ranking, diagnostics, and narrowing semantics | ✓ Validated across v1.0 and v1.1 |
+| Refocus v1.1 on search improvements before transport expansion | User priority is stronger search, not more connection options | ✓ Confirmed by completing Phase 05 before any HTTP work |
+| Pair persistent indexing with multi-workspace search in v1.1 | Both features need shared workspace-state and freshness-tracking primitives | ⚠ Phase 05 complete; remaining Phase 04 freshness diagnostics still need completion |
+| Start relationship views with direct semantic links instead of whole-program graphs | Reuse the existing definition/reference pipeline before attempting heavier analysis | — Pending Phase 06 |
 
 ---
-*Last updated: 2026-03-21 after refocusing v1.1 on search improvements*
+*Last updated: 2026-03-21 after completing Phase 05 multi-workspace search quality verification*

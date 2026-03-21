@@ -14,8 +14,8 @@
 ### Search Reach
 
 - [x] **SEARCH-01**: User can search across multiple configured workspace roots in one request.
-- [ ] **SEARCH-02**: User can see which workspace every result came from and filter by workspace when narrowing results.
-- [ ] **SEARCH-03**: User can rank or narrow broad search results by symbol kind, language, and path/workspace scope so large repositories stay usable.
+- [x] **SEARCH-02**: User can see which workspace every result came from and filter by workspace when narrowing results.
+- [x] **SEARCH-03**: User can rank or narrow broad search results by symbol kind, language, and path/workspace scope so large repositories stay usable.
 
 ### Search Depth
 
@@ -59,8 +59,8 @@
 | PERF-02 | Phase 4 | Complete |
 | PERF-03 | Phase 4 | Pending |
 | SEARCH-01 | Phase 5 | Complete |
-| SEARCH-02 | Phase 5 | Pending |
-| SEARCH-03 | Phase 5 | Pending |
+| SEARCH-02 | Phase 5 | Complete |
+| SEARCH-03 | Phase 5 | Complete |
 | REL-01 | Phase 6 | Pending |
 | REL-02 | Phase 6 | Pending |
 | REL-03 | Phase 6 | Pending |
@@ -73,4 +73,4 @@
 
 ---
 *Requirements defined: 2026-03-21*
-*Last updated: 2026-03-21 after refocusing milestone v1.1 on search improvements*
+*Last updated: 2026-03-21 after completing Phase 5 multi-workspace search quality work*
