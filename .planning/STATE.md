@@ -2,20 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Search Depth and Scale
-current_phase: 04
-current_phase_name: Persistent Indexing and Query Freshness
-current_plan: 02
-total_plans_in_phase: 3
 status: executing
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-03-21T06:28:18.943Z"
-last_activity: 2026-03-21 - Completed 04-01 Persistent Index Foundation.
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-03-21T08:41:52.127Z"
 progress:
   total_phases: 3
   completed_phases: 0
-  total_plans: 3
-  completed_plans: 1
-  percent: 33
+  total_plans: 6
+  completed_plans: 2
 ---
 
 # Project State
@@ -25,18 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-21)
 
 **Core Value:** An AI agent can quickly find the right code symbols, definitions, references, and related source regions in a workspace without relying on brittle grep-style text search.
-**Current Focus:** Phase 04 — Persistent Indexing and Query Freshness
+**Current Focus:** Phase 05 — multi-workspace-search-and-result-quality
 
 ## Current Position
 
-**Current Phase:** 04
-**Current Phase Name:** Persistent Indexing and Query Freshness
-**Total Phases:** 3
-**Current Plan:** 2
-**Total Plans in Phase:** 3
-**Status:** Executing
-**Last Activity:** 2026-03-21 - Completed 04-01 Persistent Index Foundation.
-**Progress:** [███░░░░░░░] 33%
+Phase: 05 (multi-workspace-search-and-result-quality) — EXECUTING
+Plan: 2 of 3
 
 ## Decisions Made
 
@@ -61,6 +49,9 @@ See: .planning/PROJECT.md (updated 2026-03-21)
 - [Phase 04]: Fingerprint each workspace from normalized root, exclusions, and schema version so persisted indexes invalidate cleanly on configuration changes. — This keeps cache reuse deterministic while forcing rebuilds when workspace scope or on-disk schema expectations change.
 - [Phase 04]: Store each workspace snapshot as manifest.json plus records.json under a shared index root outside the target workspace. — Separating persisted index state from the workspace preserves the read-only boundary while keeping per-workspace data easy to invalidate and reload.
 - [Phase 04]: Keep workspace summaries in sync by letting the semantic index coordinator push WorkspaceIndexSummary-shaped state into WorkspaceState. — This gives read-only tool payloads one source of truth for index freshness metadata without adding another mutable singleton.
+- [Phase 05]: Treat root as shorthand for an ordered roots list while keeping workspace.root as the legacy first-root view.
+- [Phase 05]: Persist and refresh indexes per real workspace root, then expose one aggregate index summary for backward-compatible callers.
+- [Phase 05]: Use workspaceRoot ownership plus { workspaceRoot, relativePath } record identity so duplicate paths stay distinct across repositories.
 
 ## Pending Todos
 
@@ -75,9 +66,10 @@ None.
 | Phase | Plan | Duration | Tasks | Files | Completed |
 |-------|------|----------|-------|-------|-----------|
 | 04 | 01 | 3 min | 3 | 9 | 2026-03-21 |
+| 05 | 01 | 22 min | 3 | 12 | 2026-03-21 |
 
 ## Session
 
-**Last Date:** 2026-03-21T06:28:18.939Z
-**Stopped At:** Completed 04-01-PLAN.md
-**Resume File:** .planning/phases/04-persistent-indexing-and-query-freshness/04-02-PLAN.md
+**Last Date:** 2026-03-21T08:41:52.124Z
+**Stopped At:** Completed 05-01-PLAN.md
+**Resume File:** .planning/phases/05-multi-workspace-search-and-result-quality/05-02-PLAN.md

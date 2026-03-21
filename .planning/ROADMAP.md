@@ -7,7 +7,7 @@
 
 ## Current Status
 
-Phase 04 is now executing with `04-01` complete. `v1.1` currently has 1 of 3 Phase 4 plans summarized and remains focused on search-centric performance, reach, and depth improvements.
+Phase 05 is now executing with `05-01` complete. `v1.1` currently has 1 of 3 Phase 5 plans summarized while Phase 4 remains partially complete and the milestone stays focused on search-centric performance, reach, and depth improvements.
 
 ## Overview
 
@@ -49,7 +49,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 05-01: Extend workspace configuration and discovery to support multiple active roots.
+- [x] 05-01: Extend workspace configuration and discovery to support multiple active roots.
 - [ ] 05-02: Make search pipelines and result payloads workspace-aware with stronger narrowing controls.
 - [ ] 05-03: Validate search quality on larger or federated repositories and refine result shaping.
 
@@ -77,7 +77,7 @@ Phases execute in numeric order: 4 → 5 → 6
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 4. Persistent Indexing and Query Freshness | v1.1 | 1/3 | In Progress | - |
-| 5. Multi-Workspace Search and Result Quality | v1.1 | 0/3 | Not started | - |
+| 5. Multi-Workspace Search and Result Quality | v1.1 | 1/3 | In Progress | - |
 | 6. Relationship Views and Impact Discovery | v1.1 | 0/3 | Not started | - |
 
 ---
