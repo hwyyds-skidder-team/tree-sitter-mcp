@@ -187,16 +187,18 @@ test("definition tools search and resolve definitions over stdio without mutatin
     });
     assert.notEqual(resolveFromSymbolResult.isError, true);
     const resolveFromSymbolPayload = resolveFromSymbolResult.structuredContent as {
-      filters: { language: string | null; pathPrefix: string | null; symbolKinds: string[] };
-      match: { name: string; relativePath: string; kind: string } | null;
+      filters: { workspaceRoots?: string[]; language: string | null; pathPrefix: string | null; symbolKinds: string[] };
+      match: { name: string; relativePath: string; kind: string; workspaceRoot: string } | null;
       diagnostic: { code: string } | null;
     };
     assert.deepEqual(resolveFromSymbolPayload.filters, {
+      workspaceRoots: [workspaceRoot],
       language: "typescript",
       pathPrefix: "src/app.ts",
       symbolKinds: ["function"],
     });
     assert.equal(resolveFromSymbolPayload.diagnostic, null);
+    assert.equal(resolveFromSymbolPayload.match?.workspaceRoot, workspaceRoot);
     assert.equal(resolveFromSymbolPayload.match?.relativePath, "src/app.ts");
     assert.equal(resolveFromSymbolPayload.match?.name, "greet");
 

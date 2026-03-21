@@ -6,17 +6,17 @@ import test from "node:test";
 import { loadRuntimeConfig } from "../src/config/runtimeConfig.js";
 import { searchReferences } from "../src/references/searchReferences.js";
 import { createServerContext } from "../src/server/serverContext.js";
-import { discoverWorkspaceFiles } from "../src/workspace/discoverFiles.js";
+import { discoverConfiguredWorkspaces } from "../src/workspace/discoverFiles.js";
 import { applyWorkspaceSnapshot } from "../src/workspace/workspaceState.js";
 
-async function createReferenceWorkspaceFixture(): Promise<string> {
-  const workspaceRoot = await fs.mkdtemp(path.join(os.tmpdir(), "tree-sitter-mcp-reference-search-"));
+async function createReferenceWorkspaceFixture(label = "primary"): Promise<string> {
+  const workspaceRoot = await fs.mkdtemp(path.join(os.tmpdir(), `tree-sitter-mcp-reference-search-${label}-`));
   await fs.mkdir(path.join(workspaceRoot, "src"), { recursive: true });
   await fs.mkdir(path.join(workspaceRoot, "scripts"), { recursive: true });
 
   await fs.writeFile(path.join(workspaceRoot, "src", "app.ts"), [
     "export function greetUser(name: string): string {",
-    "  return name;",
+    `  return '${label}:' + name;`,
     "}",
     "export function lonely(): string {",
     "  return 'solo';",
@@ -60,28 +60,38 @@ async function createReferenceWorkspaceFixture(): Promise<string> {
   return workspaceRoot;
 }
 
-async function createPreparedContext(workspaceRoot: string) {
+async function createPreparedContext(workspaceRoots: string | string[]) {
+  const roots = Array.isArray(workspaceRoots) ? workspaceRoots : [workspaceRoots];
   const indexRootDir = await fs.mkdtemp(path.join(os.tmpdir(), "tree-sitter-mcp-reference-index-"));
   const context = createServerContext(loadRuntimeConfig({
     ...process.env,
     TREE_SITTER_MCP_INDEX_DIR: indexRootDir,
   }));
-  const discovery = await discoverWorkspaceFiles(
-    workspaceRoot,
+  const discovery = await discoverConfiguredWorkspaces(
+    roots,
     context.config.defaultExclusions,
     context.languageRegistry,
   );
 
   applyWorkspaceSnapshot(context.workspace, {
-    root: workspaceRoot,
+    root: roots[0] ?? null,
+    roots,
+    workspaces: discovery.workspaces.map((workspace) => ({
+      root: workspace.root,
+      exclusions: context.config.defaultExclusions,
+      searchableFileCount: workspace.searchableFiles.length,
+      unsupportedFileCount: workspace.unsupportedFiles.length,
+    })),
     exclusions: context.config.defaultExclusions,
     searchableFiles: discovery.searchableFiles,
     unsupportedFiles: discovery.unsupportedFiles,
   });
-  context.semanticIndex.replaceWorkspace({
-    root: workspaceRoot,
-    exclusions: context.config.defaultExclusions,
-  });
+  context.semanticIndex.replaceWorkspaces(
+    roots.map((root) => ({
+      root,
+      exclusions: context.config.defaultExclusions,
+    })),
+  );
   await context.semanticIndex.ensureReady(context);
 
   return context;
@@ -109,6 +119,49 @@ test("searchReferences resolves a symbol target and finds workspace-wide usages 
   ].sort());
   assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "parse_failed" && diagnostic.relativePath === "src/broken.ts"));
   assert.equal(result.searchedFiles, 3);
+});
+
+test("searchReferences narrows multi-workspace results by workspaceRoots, language, and pathPrefix while preserving omitted-filter breadth", async () => {
+  const primaryRoot = await createReferenceWorkspaceFixture("primary");
+  const secondaryRoot = await createReferenceWorkspaceFixture("secondary");
+  const context = await createPreparedContext([primaryRoot, secondaryRoot]);
+
+  const baseline = await searchReferences(context, {
+    lookup: {
+      name: "greetUser",
+      languageId: "typescript",
+      workspaceRoot: primaryRoot,
+      kind: "function",
+    },
+  });
+
+  assert.equal(baseline.diagnostic, null);
+  assert.ok(baseline.results.some((reference) => reference.workspaceRoot === primaryRoot));
+  assert.ok(baseline.results.some((reference) => reference.workspaceRoot === secondaryRoot));
+
+  const filtered = await searchReferences(context, {
+    lookup: {
+      name: "greetUser",
+      languageId: "typescript",
+      workspaceRoot: primaryRoot,
+      kind: "function",
+    },
+    workspaceRoots: [primaryRoot],
+    language: "tsx",
+    pathPrefix: ".\\src\\view.tsx",
+  });
+
+  assert.equal(filtered.diagnostic, null);
+  assert.equal(filtered.searchedFiles, 1);
+  assert.ok(baseline.results.length > filtered.results.length);
+  assert.deepEqual(
+    filtered.results.map((reference) => `${reference.workspaceRoot}:${reference.relativePath}:${reference.referenceKind}`).sort(),
+    [
+      `${primaryRoot}:src/view.tsx:call`,
+      `${primaryRoot}:src/view.tsx:reference`,
+      `${primaryRoot}:src/view.tsx:reference`,
+    ].sort(),
+  );
 });
 
 test("searchReferences supports a discovered symbol descriptor and call-site lookup", async () => {
