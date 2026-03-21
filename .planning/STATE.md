@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Search Depth and Scale
-status: planning
-stopped_at: Completed 04-VERIFICATION.md
-last_updated: "2026-03-21T13:53:35Z"
+status: in_progress
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-03-21T14:54:32.175Z"
 progress:
   total_phases: 3
   completed_phases: 2
-  total_plans: 6
-  completed_plans: 6
+  total_plans: 9
+  completed_plans: 7
 ---
 
 # Project State
@@ -23,8 +23,8 @@ See: .planning/PROJECT.md (updated 2026-03-21)
 
 ## Current Position
 
-Phase: 06 (relationship-views-and-impact-discovery) — READY TO PLAN
-Plan: 0 of 3
+Phase: 06 (relationship-views-and-impact-discovery) — EXECUTING
+Plan: 2 of 3
 
 ## Decisions Made
 
@@ -54,7 +54,10 @@ Plan: 0 of 3
 - [Phase 05]: Normalize `workspaceRoots` filtering centrally so definition and reference backends preserve the same path/language/kind narrowing behavior across multiple roots.
 - [Phase 05]: Apply one shared exact/prefix/contains ranking helper before truncation so federated symbol and definition searches stay deterministic across roots.
 - [Phase 05]: Expose additive `workspaceRoots` and `workspaceBreakdown` metadata on broad search tools while keeping single-workspace text compact for existing callers.
-- [Next]: Plan Phase 06 on top of the now-verified persistent-index and multi-workspace search foundation.
+- [Next]: Implement Phase 06-02 relationship traversal, filtering, pagination, and workspace-aware payload shaping on top of the locked contract from 06-01.
+- [Phase 06]: Reuse DefinitionMatchSchema and ReferenceMatchSchema inside relationship edges so workspace attribution and evidence stay aligned with existing search payloads.
+- [Phase 06]: Constrain relationship maxDepth to 1..2 and default it to 1 so Phase 6 stays read-only and neighborhood-scoped.
+- [Phase 06]: Normalize relationshipKinds into canonical enum order so future traversal output remains deterministic regardless of caller input order.
 
 ## Pending Todos
 
@@ -74,9 +77,10 @@ None.
 | 05 | 01 | 22 min | 3 | 12 | 2026-03-21 |
 | 05 | 02 | 16 min | 3 | 15 | 2026-03-21 |
 | 05 | 03 | 3 hr 30 min | 3 | 13 | 2026-03-21 |
+| 06 | 01 | 9 min | 3 | 6 | 2026-03-21 |
 
 ## Session
 
-**Last Date:** 2026-03-21T13:53:35Z
-**Stopped At:** Completed Phase 04 persistent indexing verification
-**Resume File:** not created yet — plan Phase 06 next (`$gsd-plan-phase 6`)
+**Last Date:** 2026-03-21T14:54:32.171Z
+**Stopped At:** Completed 06-01-PLAN.md
+**Resume File:** .planning/phases/06-relationship-views-and-impact-discovery/06-02-PLAN.md

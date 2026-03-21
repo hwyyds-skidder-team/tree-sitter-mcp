@@ -20,8 +20,8 @@
 ### Search Depth
 
 - [ ] **REL-01**: User can request a relationship view for a resolved symbol that shows direct incoming and outgoing semantic links.
-- [ ] **REL-02**: User can see precise source locations and workspace attribution for each related symbol.
-- [ ] **REL-03**: User can filter and paginate relationship results by workspace, language, and relationship kind.
+- [x] **REL-02**: User can see precise source locations and workspace attribution for each related symbol.
+- [x] **REL-03**: User can filter and paginate relationship results by workspace, language, and relationship kind.
 - [ ] **REL-04**: User can inspect a small impact-oriented neighborhood around a symbol (for example callers, callees, imports, or references) without leaving read-only search workflows.
 
 ## Future Requirements
@@ -62,8 +62,8 @@
 | SEARCH-02 | Phase 5 | Complete |
 | SEARCH-03 | Phase 5 | Complete |
 | REL-01 | Phase 6 | Pending |
-| REL-02 | Phase 6 | Pending |
-| REL-03 | Phase 6 | Pending |
+| REL-02 | Phase 6 | Complete |
+| REL-03 | Phase 6 | Complete |
 | REL-04 | Phase 6 | Pending |
 
 **Coverage:**
@@ -73,4 +73,4 @@
 
 ---
 *Requirements defined: 2026-03-21*
-*Last updated: 2026-03-21 after completing Phase 4 persistent indexing and freshness work*
+*Last updated: 2026-03-21 after completing Phase 06-01 relationship contract foundations*
