@@ -7,7 +7,6 @@ import {
   normalizeDefinitionFilters,
 } from "./definitionFilters.js";
 import type { DefinitionFilters, DefinitionMatch } from "./definitionTypes.js";
-import { collectFileDefinitions } from "./definitionPipeline.js";
 import { normalizeDefinitionMatches } from "./normalizeDefinitionMatch.js";
 
 export interface SearchDefinitionsRequest {
@@ -89,15 +88,15 @@ export async function searchDefinitions(
 
   const diagnostics: Diagnostic[] = [];
   const matches: Array<DefinitionMatch & { score: number }> = [];
-  const searchableFiles = filterSearchableFiles(context.workspace.searchableFiles, normalizedFiltersResult.filters);
+  const freshIndex = await context.semanticIndex.getFreshRecords(context);
+  const searchableFiles = filterSearchableFiles(freshIndex.records, normalizedFiltersResult.filters);
   let searchedFiles = 0;
 
   for (const file of searchableFiles) {
     searchedFiles += 1;
-    const result = await collectFileDefinitions(context, file);
-    diagnostics.push(...result.diagnostics);
+    diagnostics.push(...file.diagnostics);
 
-    for (const definition of normalizeDefinitionMatches(result.definitions)) {
+    for (const definition of normalizeDefinitionMatches(file.definitions)) {
       if (!matchesDefinitionFilters(definition, normalizedFiltersResult.filters)) {
         continue;
       }

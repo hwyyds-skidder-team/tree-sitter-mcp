@@ -6,7 +6,6 @@ import {
   matchesDefinitionFilters,
   normalizeDefinitionFilters,
 } from "./definitionFilters.js";
-import { collectFileDefinitions } from "./definitionPipeline.js";
 import type { DefinitionFilters, DefinitionMatch } from "./definitionTypes.js";
 import { normalizeDefinitionMatches } from "./normalizeDefinitionMatch.js";
 
@@ -120,7 +119,8 @@ export async function resolveDefinition(
     };
   }
 
-  const filesToSearch = filterSearchableFiles(context.workspace.searchableFiles, normalizedFiltersResult.filters);
+  const freshIndex = await context.semanticIndex.getFreshRecords(context);
+  const filesToSearch = filterSearchableFiles(freshIndex.records, normalizedFiltersResult.filters);
   const orderedFiles = prioritizeSearchableFiles(filesToSearch, normalizedFiltersResult.filters.pathPrefix);
   const diagnostics: Diagnostic[] = [];
   const matches: DefinitionMatch[] = [];
@@ -128,10 +128,9 @@ export async function resolveDefinition(
 
   for (const file of orderedFiles) {
     searchedFiles += 1;
-    const result = await collectFileDefinitions(context, file);
-    diagnostics.push(...result.diagnostics);
+    diagnostics.push(...file.diagnostics);
 
-    matches.push(...normalizeDefinitionMatches(result.definitions).filter((definition) => {
+    matches.push(...normalizeDefinitionMatches(file.definitions).filter((definition) => {
       if (definition.name.toLowerCase() !== normalizedName) {
         return false;
       }
@@ -171,10 +170,10 @@ export async function resolveDefinition(
   };
 }
 
-function prioritizeSearchableFiles(
-  files: ServerContext["workspace"]["searchableFiles"],
+function prioritizeSearchableFiles<T extends { relativePath: string }>(
+  files: T[],
   preferredPathPrefix: string | null,
-) {
+): T[] {
   return [...files].sort((left, right) => {
     if (preferredPathPrefix) {
       const leftPriority = left.relativePath === preferredPathPrefix ? 0 : 1;

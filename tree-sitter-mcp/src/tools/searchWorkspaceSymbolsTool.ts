@@ -2,9 +2,7 @@ import path from "node:path";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { createDiagnostic, DiagnosticSchema } from "../diagnostics/diagnosticFactory.js";
-import { parseWithDiagnostics } from "../parsing/parseWithDiagnostics.js";
 import {
-  extractSymbols,
   SymbolKindSchema,
   SymbolMatchSchema,
 } from "../queries/queryCatalog.js";
@@ -41,7 +39,7 @@ export function registerSearchWorkspaceSymbolsTool(server: McpServer, context: S
     "search_workspace_symbols",
     {
       title: "Search Workspace Symbols",
-      description: "Search the active workspace for Tree-sitter symbols by name without building a persistent index.",
+      description: "Search the active workspace for Tree-sitter symbols by name using freshness-checked indexed records.",
       inputSchema: SearchWorkspaceSymbolsInputSchema,
       outputSchema: SearchWorkspaceSymbolsOutputSchema,
       annotations: {
@@ -155,11 +153,12 @@ export function registerSearchWorkspaceSymbolsTool(server: McpServer, context: S
         relativePath: file.relativePath,
         severity: "info",
       }))];
+      const freshIndex = await context.semanticIndex.getFreshRecords(context);
 
       const results = [];
       let searchedFiles = 0;
 
-      for (const file of context.workspace.searchableFiles) {
+      for (const file of freshIndex.records) {
         if (input.language && file.languageId !== input.language) {
           continue;
         }
@@ -173,40 +172,9 @@ export function registerSearchWorkspaceSymbolsTool(server: McpServer, context: S
         }
 
         searchedFiles += 1;
-        const language = context.languageRegistry.getById(file.languageId);
-        if (!language) {
-          diagnostics.push(createDiagnostic({
-            code: "unsupported_language",
-            message: `Registered file ${file.relativePath} references missing language ${file.languageId}.`,
-            reason: "Workspace discovery found a file whose grammar registration is no longer present.",
-            nextStep: "Reset the workspace with set_workspace or restart the server.",
-            filePath: file.path,
-            relativePath: file.relativePath,
-            languageId: file.languageId,
-          }));
-          continue;
-        }
+        diagnostics.push(...file.diagnostics);
 
-        const parseResult = await parseWithDiagnostics({
-          absolutePath: file.path,
-          relativePath: file.relativePath,
-          language,
-        });
-
-        if (!parseResult.ok) {
-          diagnostics.push(parseResult.diagnostic);
-          continue;
-        }
-
-        const fileSymbols = extractSymbols({
-          language,
-          absolutePath: file.path,
-          relativePath: file.relativePath,
-          source: parseResult.source,
-          tree: parseResult.tree,
-        });
-
-        for (const symbol of fileSymbols) {
+        for (const symbol of file.symbols) {
           if (!symbol.name.toLowerCase().includes(normalizedQuery)) {
             continue;
           }

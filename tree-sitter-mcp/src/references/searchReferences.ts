@@ -1,5 +1,3 @@
-import { createContextSnippet } from "../context/contextSnippet.js";
-import { extractEnclosingContext } from "../context/extractEnclosingContext.js";
 import { createDiagnostic, type Diagnostic } from "../diagnostics/diagnosticFactory.js";
 import { resolveDefinition } from "../definitions/resolveDefinition.js";
 import type {
@@ -7,10 +5,8 @@ import type {
   DefinitionSymbolDescriptor,
 } from "../definitions/resolveDefinition.js";
 import type { DefinitionMatch } from "../definitions/definitionTypes.js";
-import { parseWithDiagnostics } from "../parsing/parseWithDiagnostics.js";
 import { paginateResults, type Pagination } from "../results/paginateResults.js";
 import type { ServerContext } from "../server/serverContext.js";
-import { collectFileReferences } from "./referencePipeline.js";
 import type { ReferenceMatch } from "./referenceTypes.js";
 
 export interface SearchReferencesRequest {
@@ -101,8 +97,9 @@ export async function searchReferences(
 
   const targetMatch = targetResult.match;
   const compatibleLanguageIds = getCompatibleLanguageIds(targetMatch.languageId);
+  const freshIndex = await context.semanticIndex.getFreshRecords(context);
 
-  const candidateFiles = context.workspace.searchableFiles
+  const candidateFiles = freshIndex.records
     .filter((file) => compatibleLanguageIds.has(file.languageId))
     .sort((left, right) => left.relativePath.localeCompare(right.relativePath));
 
@@ -111,41 +108,12 @@ export async function searchReferences(
 
   for (const file of candidateFiles) {
     searchedFiles += 1;
-    const fileResult = await collectFileReferences(context, file, {
-      targetName: targetMatch.name,
-      symbolKind: targetMatch.kind,
-    });
-    diagnostics.push(...fileResult.diagnostics);
+    diagnostics.push(...file.diagnostics);
 
-    let references = fileResult.references.filter((reference) => !isDefinitionSelection(reference, targetMatch));
-    if (includeContext && references.length > 0) {
-      const language = context.languageRegistry.getById(file.languageId);
-      if (language) {
-        const parseResult = await parseWithDiagnostics({
-          absolutePath: file.path,
-          relativePath: file.relativePath,
-          language,
-        });
-
-        if (!parseResult.ok) {
-          diagnostics.push(parseResult.diagnostic);
-        } else {
-          references = references.map((reference) => ({
-            ...reference,
-            enclosingContext: extractEnclosingContext({
-              tree: parseResult.tree,
-              startOffset: reference.selectionRange.start.offset,
-              endOffset: reference.selectionRange.end.offset,
-            }),
-            contextSnippet: createContextSnippet({
-              source: parseResult.source,
-              startOffset: reference.selectionRange.start.offset,
-              endOffset: reference.selectionRange.end.offset,
-            }),
-          }));
-        }
-      }
-    }
+    const references = file.references
+      .filter((reference) => reference.name.toLowerCase() === targetMatch.name.toLowerCase())
+      .filter((reference) => !isDefinitionSelection(reference, targetMatch))
+      .map((reference) => shapeReferenceMatch(reference, targetMatch.kind, includeContext));
 
     matches.push(...references);
   }
@@ -236,4 +204,30 @@ function getCompatibleLanguageIds(languageId: string): Set<string> {
   }
 
   return new Set([languageId]);
+}
+
+function shapeReferenceMatch(
+  reference: ReferenceMatch,
+  symbolKind: DefinitionMatch["kind"],
+  includeContext: boolean,
+): ReferenceMatch {
+  if (includeContext) {
+    return {
+      ...reference,
+      symbolKind,
+    };
+  }
+
+  return {
+    name: reference.name,
+    referenceKind: reference.referenceKind,
+    symbolKind,
+    languageId: reference.languageId,
+    filePath: reference.filePath,
+    relativePath: reference.relativePath,
+    range: reference.range,
+    selectionRange: reference.selectionRange,
+    containerName: reference.containerName,
+    snippet: reference.snippet,
+  };
 }

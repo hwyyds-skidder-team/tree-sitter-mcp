@@ -64,7 +64,11 @@ async function createDefinitionWorkspaceFixture(): Promise<string> {
 }
 
 async function createPreparedContext(workspaceRoot: string) {
-  const context = createServerContext(loadRuntimeConfig());
+  const indexRootDir = await fs.mkdtemp(path.join(os.tmpdir(), "tree-sitter-mcp-definition-index-"));
+  const context = createServerContext(loadRuntimeConfig({
+    ...process.env,
+    TREE_SITTER_MCP_INDEX_DIR: indexRootDir,
+  }));
   const discovery = await discoverWorkspaceFiles(
     workspaceRoot,
     context.config.defaultExclusions,
@@ -77,6 +81,11 @@ async function createPreparedContext(workspaceRoot: string) {
     searchableFiles: discovery.searchableFiles,
     unsupportedFiles: discovery.unsupportedFiles,
   });
+  context.semanticIndex.replaceWorkspace({
+    root: workspaceRoot,
+    exclusions: context.config.defaultExclusions,
+  });
+  await context.semanticIndex.ensureReady(context);
 
   return context;
 }
@@ -130,7 +139,7 @@ test("searchDefinitions finds definitions on demand and reports parse diagnostic
   assert.equal(result.searchedFiles, context.workspace.searchableFiles.length);
 });
 
-test("searchDefinitions uses the workspace snapshot rather than recrawling the filesystem", async () => {
+test("searchDefinitions refreshes the workspace snapshot and picks up newly added files", async () => {
   const workspaceRoot = await createDefinitionWorkspaceFixture();
   const context = await createPreparedContext(workspaceRoot);
 
@@ -140,6 +149,7 @@ test("searchDefinitions uses the workspace snapshot rather than recrawling the f
     query: "lateDefinition",
   });
 
-  assert.equal(result.results.length, 0);
+  assert.deepEqual(result.results.map((definition) => definition.relativePath), ["src/late.ts"]);
   assert.equal(result.searchedFiles, context.workspace.searchableFiles.length);
+  assert.equal(context.workspace.index.state, "refreshed");
 });

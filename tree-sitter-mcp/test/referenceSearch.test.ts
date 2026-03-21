@@ -61,7 +61,11 @@ async function createReferenceWorkspaceFixture(): Promise<string> {
 }
 
 async function createPreparedContext(workspaceRoot: string) {
-  const context = createServerContext(loadRuntimeConfig());
+  const indexRootDir = await fs.mkdtemp(path.join(os.tmpdir(), "tree-sitter-mcp-reference-index-"));
+  const context = createServerContext(loadRuntimeConfig({
+    ...process.env,
+    TREE_SITTER_MCP_INDEX_DIR: indexRootDir,
+  }));
   const discovery = await discoverWorkspaceFiles(
     workspaceRoot,
     context.config.defaultExclusions,
@@ -74,6 +78,11 @@ async function createPreparedContext(workspaceRoot: string) {
     searchableFiles: discovery.searchableFiles,
     unsupportedFiles: discovery.unsupportedFiles,
   });
+  context.semanticIndex.replaceWorkspace({
+    root: workspaceRoot,
+    exclusions: context.config.defaultExclusions,
+  });
+  await context.semanticIndex.ensureReady(context);
 
   return context;
 }
@@ -148,7 +157,7 @@ test("searchReferences returns a structured diagnostic when the target cannot be
   assert.equal(noUsages.diagnostic?.code, "reference_not_found");
 });
 
-test("searchReferences uses the workspace snapshot rather than recrawling the filesystem", async () => {
+test("searchReferences refreshes the workspace snapshot and picks up newly added files", async () => {
   const workspaceRoot = await createReferenceWorkspaceFixture();
   const context = await createPreparedContext(workspaceRoot);
 
@@ -166,6 +175,47 @@ test("searchReferences uses the workspace snapshot rather than recrawling the fi
     },
   });
 
-  assert.ok(result.results.every((reference) => reference.relativePath !== "src/late.ts"));
-  assert.equal(result.searchedFiles, 3);
+  assert.ok(result.results.some((reference) => reference.relativePath === "src/late.ts"));
+  assert.deepEqual(result.results.map((reference) => `${reference.relativePath}:${reference.referenceKind}`).sort(), [
+    "src/app.ts:call",
+    "src/late.ts:call",
+    "src/late.ts:reference",
+    "src/view.tsx:call",
+    "src/view.tsx:reference",
+    "src/view.tsx:reference",
+  ].sort());
+  assert.equal(result.searchedFiles, 4);
+  assert.equal(context.workspace.index.state, "refreshed");
+});
+
+test("searchReferences excludes degraded stale references after a changed file breaks", async () => {
+  const workspaceRoot = await createReferenceWorkspaceFixture();
+  const context = await createPreparedContext(workspaceRoot);
+
+  const initialResult = await searchReferences(context, {
+    lookup: {
+      name: "greetUser",
+      languageId: "typescript",
+      kind: "function",
+    },
+  });
+  assert.ok(initialResult.results.some((reference) => reference.relativePath === "src/view.tsx"));
+
+  await fs.writeFile(path.join(workspaceRoot, "src", "view.tsx"), "export function Panel( {\n");
+
+  const degradedResult = await searchReferences(context, {
+    lookup: {
+      name: "greetUser",
+      languageId: "typescript",
+      kind: "function",
+    },
+  });
+
+  assert.equal(degradedResult.diagnostic, null);
+  assert.deepEqual(degradedResult.results.map((reference) => `${reference.relativePath}:${reference.referenceKind}`), [
+    "src/app.ts:call",
+  ]);
+  assert.ok(degradedResult.diagnostics.some((diagnostic) =>
+    diagnostic.code === "parse_failed" && diagnostic.relativePath === "src/view.tsx"));
+  assert.equal(context.workspace.index.state, "degraded");
 });

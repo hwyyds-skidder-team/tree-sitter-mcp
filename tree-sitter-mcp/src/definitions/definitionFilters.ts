@@ -80,10 +80,10 @@ export function normalizeDefinitionFilters(
   };
 }
 
-export function filterSearchableFiles(
-  files: readonly SearchableFileRecord[],
+export function filterSearchableFiles<T extends Pick<SearchableFileRecord, "languageId" | "relativePath">>(
+  files: readonly T[],
   filters: DefinitionFilters,
-): SearchableFileRecord[] {
+): T[] {
   return files.filter((file) => matchesFileFilters(file, filters));
 }
 

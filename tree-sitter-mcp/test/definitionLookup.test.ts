@@ -41,7 +41,11 @@ async function createDefinitionWorkspaceFixture(): Promise<string> {
 }
 
 async function createPreparedContext(workspaceRoot: string) {
-  const context = createServerContext(loadRuntimeConfig());
+  const indexRootDir = await fs.mkdtemp(path.join(os.tmpdir(), "tree-sitter-mcp-definition-index-"));
+  const context = createServerContext(loadRuntimeConfig({
+    ...process.env,
+    TREE_SITTER_MCP_INDEX_DIR: indexRootDir,
+  }));
   const discovery = await discoverWorkspaceFiles(
     workspaceRoot,
     context.config.defaultExclusions,
@@ -54,6 +58,11 @@ async function createPreparedContext(workspaceRoot: string) {
     searchableFiles: discovery.searchableFiles,
     unsupportedFiles: discovery.unsupportedFiles,
   });
+  context.semanticIndex.replaceWorkspace({
+    root: workspaceRoot,
+    exclusions: context.config.defaultExclusions,
+  });
+  await context.semanticIndex.ensureReady(context);
 
   return context;
 }
@@ -105,4 +114,33 @@ test("resolveDefinition returns a structured diagnostic when the target is missi
 
   assert.equal(result.match, null);
   assert.equal(result.diagnostic?.code, "definition_not_found");
+});
+
+test("resolveDefinition excludes degraded stale indexed records after a changed file breaks", async () => {
+  const workspaceRoot = await createDefinitionWorkspaceFixture();
+  const context = await createPreparedContext(workspaceRoot);
+
+  const initialResult = await resolveDefinition(context, {
+    lookup: {
+      name: "greet",
+      languageId: "typescript",
+      relativePath: "src/app.ts",
+    },
+  });
+  assert.equal(initialResult.match?.relativePath, "src/app.ts");
+
+  await fs.writeFile(path.join(workspaceRoot, "src", "app.ts"), "export function greet( {\n");
+
+  const degradedResult = await resolveDefinition(context, {
+    lookup: {
+      name: "greet",
+      languageId: "typescript",
+      kind: "function",
+    },
+  });
+
+  assert.equal(degradedResult.match?.relativePath, "src/secondary.ts");
+  assert.ok(degradedResult.diagnostics.some((diagnostic) =>
+    diagnostic.code === "parse_failed" && diagnostic.relativePath === "src/app.ts"));
+  assert.equal(context.workspace.index.state, "degraded");
 });
