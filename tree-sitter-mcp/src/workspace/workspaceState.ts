@@ -1,4 +1,9 @@
 import { z } from "zod";
+import {
+  createEmptyWorkspaceIndexSummary,
+  type WorkspaceIndexSummary,
+  WorkspaceIndexSummarySchema,
+} from "../indexing/indexTypes.js";
 
 export const SearchableFileRecordSchema = z.object({
   path: z.string(),
@@ -20,6 +25,7 @@ export const WorkspaceSummarySchema = z.object({
   searchableFileCount: z.number().int().nonnegative(),
   unsupportedFileCount: z.number().int().nonnegative(),
   lastUpdatedAt: z.string().nullable(),
+  index: WorkspaceIndexSummarySchema,
 });
 
 export type SearchableFileRecord = z.infer<typeof SearchableFileRecordSchema>;
@@ -32,6 +38,7 @@ export interface WorkspaceState {
   searchableFiles: SearchableFileRecord[];
   unsupportedFiles: UnsupportedFileRecord[];
   lastUpdatedAt: string | null;
+  index: WorkspaceIndexSummary;
 }
 
 export interface WorkspaceSnapshotInput {
@@ -61,13 +68,17 @@ export function mergeExclusions(...lists: string[][]): string[] {
   return merged;
 }
 
-export function createWorkspaceState(defaultExclusions: string[]): WorkspaceState {
+export function createWorkspaceState(
+  defaultExclusions: string[],
+  index: WorkspaceIndexSummary = createEmptyWorkspaceIndexSummary(),
+): WorkspaceState {
   return {
     root: null,
     exclusions: mergeExclusions(defaultExclusions),
     searchableFiles: [],
     unsupportedFiles: [],
     lastUpdatedAt: null,
+    index: { ...index },
   };
 }
 
@@ -89,5 +100,13 @@ export function summarizeWorkspace(state: WorkspaceState): WorkspaceSummary {
     searchableFileCount: state.searchableFiles.length,
     unsupportedFileCount: state.unsupportedFiles.length,
     lastUpdatedAt: state.lastUpdatedAt,
+    index: { ...state.index },
   };
+}
+
+export function applyWorkspaceIndexSummary(
+  state: WorkspaceState,
+  index: WorkspaceIndexSummary,
+): void {
+  state.index = { ...index };
 }
