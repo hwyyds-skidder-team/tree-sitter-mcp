@@ -116,7 +116,20 @@ test("definition tools search and resolve definitions over stdio without mutatin
     });
     assert.notEqual(searchResult.isError, true);
     const searchPayload = searchResult.structuredContent as {
-      filters: { language: string | null; pathPrefix: string | null; symbolKinds: string[]; limit: number };
+      workspaceRoots: string[];
+      filters: {
+        workspaceRoots?: string[];
+        language: string | null;
+        pathPrefix: string | null;
+        symbolKinds: string[];
+        limit: number;
+      };
+      workspaceBreakdown: Array<{
+        workspaceRoot: string;
+        searchedFiles: number;
+        matchedFiles: number;
+        returnedResults: number;
+      }>;
       results: Array<{
         name: string;
         kind: string;
@@ -154,6 +167,15 @@ test("definition tools search and resolve definitions over stdio without mutatin
       searchPayload.freshness.workspaceFingerprint,
       setWorkspacePayload.workspace.index.workspaceFingerprint,
     );
+    assert.deepEqual(searchPayload.workspaceRoots, [workspaceRoot]);
+    assert.deepEqual(searchPayload.workspaceBreakdown, [
+      {
+        workspaceRoot,
+        searchedFiles: 4,
+        matchedFiles: 3,
+        returnedResults: 4,
+      },
+    ]);
 
     const filteredSearchResult = await client.callTool({
       name: "search_definitions",
@@ -166,9 +188,23 @@ test("definition tools search and resolve definitions over stdio without mutatin
     });
     assert.notEqual(filteredSearchResult.isError, true);
     const filteredSearchPayload = filteredSearchResult.structuredContent as {
-      filters: { language: string | null; pathPrefix: string | null; symbolKinds: string[]; limit: number };
+      workspaceRoots: string[];
+      filters: {
+        workspaceRoots?: string[];
+        language: string | null;
+        pathPrefix: string | null;
+        symbolKinds: string[];
+        limit: number;
+      };
+      workspaceBreakdown: Array<{
+        workspaceRoot: string;
+        searchedFiles: number;
+        matchedFiles: number;
+        returnedResults: number;
+      }>;
       results: Array<{ name: string; relativePath: string; languageId: string; kind: string }>;
     };
+    assert.deepEqual(filteredSearchPayload.workspaceRoots, [workspaceRoot]);
     assert.deepEqual(filteredSearchPayload.filters, {
       language: "typescript",
       pathPrefix: "src/app.ts",
@@ -177,6 +213,14 @@ test("definition tools search and resolve definitions over stdio without mutatin
     });
     assert.deepEqual(filteredSearchPayload.results.map((definition) => `${definition.relativePath}:${definition.name}`), [
       "src/app.ts:greet",
+    ]);
+    assert.deepEqual(filteredSearchPayload.workspaceBreakdown, [
+      {
+        workspaceRoot,
+        searchedFiles: 1,
+        matchedFiles: 1,
+        returnedResults: 1,
+      },
     ]);
 
     const resolveFromSymbolResult = await client.callTool({

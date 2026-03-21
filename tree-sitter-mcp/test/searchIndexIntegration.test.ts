@@ -7,30 +7,40 @@ import { loadRuntimeConfig } from "../src/config/runtimeConfig.js";
 import { searchDefinitions } from "../src/definitions/searchDefinitions.js";
 import { searchReferences } from "../src/references/searchReferences.js";
 import { createServerContext } from "../src/server/serverContext.js";
-import { discoverWorkspaceFiles } from "../src/workspace/discoverFiles.js";
+import { discoverConfiguredWorkspaces } from "../src/workspace/discoverFiles.js";
 import { applyWorkspaceSnapshot } from "../src/workspace/workspaceState.js";
 
-async function createPreparedContext(workspaceRoot: string, indexRootDir: string) {
+async function createPreparedContext(workspaceRoots: string | string[], indexRootDir: string) {
+  const roots = Array.isArray(workspaceRoots) ? workspaceRoots : [workspaceRoots];
   const context = createServerContext(loadRuntimeConfig({
     ...process.env,
     TREE_SITTER_MCP_INDEX_DIR: indexRootDir,
   }));
-  const discovery = await discoverWorkspaceFiles(
-    workspaceRoot,
+  const discovery = await discoverConfiguredWorkspaces(
+    roots,
     context.config.defaultExclusions,
     context.languageRegistry,
   );
 
   applyWorkspaceSnapshot(context.workspace, {
-    root: workspaceRoot,
+    root: roots[0] ?? null,
+    roots,
+    workspaces: discovery.workspaces.map((workspace) => ({
+      root: workspace.root,
+      exclusions: context.config.defaultExclusions,
+      searchableFileCount: workspace.searchableFiles.length,
+      unsupportedFileCount: workspace.unsupportedFiles.length,
+    })),
     exclusions: context.config.defaultExclusions,
     searchableFiles: discovery.searchableFiles,
     unsupportedFiles: discovery.unsupportedFiles,
   });
-  context.semanticIndex.replaceWorkspace({
-    root: workspaceRoot,
-    exclusions: context.config.defaultExclusions,
-  });
+  context.semanticIndex.replaceWorkspaces(
+    roots.map((root) => ({
+      root,
+      exclusions: context.config.defaultExclusions,
+    })),
+  );
   await context.semanticIndex.ensureReady(context);
 
   return context;
@@ -39,6 +49,7 @@ async function createPreparedContext(workspaceRoot: string, indexRootDir: string
 async function readPersistedRecords(indexRootDir: string, workspaceFingerprint: string) {
   const recordsPath = path.join(indexRootDir, workspaceFingerprint, "records.json");
   const records = JSON.parse(await fs.readFile(recordsPath, "utf8")) as Array<{
+    workspaceRoot: string;
     relativePath: string;
     contentHash: string;
     definitions: Array<{ name: string }>;
@@ -176,4 +187,66 @@ test("degraded refresh drops stale definitions and references for a broken chang
   assert.ok(degradedReferences.diagnostics.some((diagnostic) =>
     diagnostic.code === "parse_failed" && diagnostic.relativePath === "src/app.ts"));
   assert.equal(context.workspace.index.state, "degraded");
+});
+
+test("multi-root indexed search reuses persisted records per workspace root", async () => {
+  const firstRoot = await fs.mkdtemp(path.join(os.tmpdir(), "tree-sitter-mcp-index-multi-first-"));
+  const secondRoot = await fs.mkdtemp(path.join(os.tmpdir(), "tree-sitter-mcp-index-multi-second-"));
+  const indexRootDir = await fs.mkdtemp(path.join(os.tmpdir(), "tree-sitter-mcp-index-store-"));
+
+  await fs.mkdir(path.join(firstRoot, "src"), { recursive: true });
+  await fs.mkdir(path.join(secondRoot, "src"), { recursive: true });
+  await fs.writeFile(path.join(firstRoot, "src", "shared.ts"), "export function greet() { return 'first'; }\n");
+  await fs.writeFile(path.join(secondRoot, "src", "shared.ts"), "export function greet() { return 'second'; }\n");
+
+  const firstContext = await createPreparedContext([firstRoot, secondRoot], indexRootDir);
+  const firstResult = await searchDefinitions(firstContext, {
+    query: "greet",
+    language: "typescript",
+  });
+  const firstWorkspaceFingerprints = new Map(
+    firstContext.workspace.workspaces.map((workspace) => [workspace.root, workspace.index.workspaceFingerprint] as const),
+  );
+
+  assert.deepEqual(
+    firstResult.results.map((result) => `${result.workspaceRoot}:${result.relativePath}`),
+    [
+      `${firstRoot}:src/shared.ts`,
+      `${secondRoot}:src/shared.ts`,
+    ],
+  );
+  assert.equal(firstContext.workspace.workspaceCount, 2);
+  assert.ok(firstWorkspaceFingerprints.get(firstRoot));
+  assert.ok(firstWorkspaceFingerprints.get(secondRoot));
+
+  const firstRecords = await readPersistedRecords(indexRootDir, firstWorkspaceFingerprints.get(firstRoot) ?? "");
+  const secondRecords = await readPersistedRecords(indexRootDir, firstWorkspaceFingerprints.get(secondRoot) ?? "");
+
+  assert.deepEqual(firstRecords.records.map((record) => record.relativePath), ["src/shared.ts"]);
+  assert.deepEqual(secondRecords.records.map((record) => record.relativePath), ["src/shared.ts"]);
+  assert.equal(firstRecords.records[0]?.workspaceRoot, firstRoot);
+  assert.equal(secondRecords.records[0]?.workspaceRoot, secondRoot);
+
+  const secondContext = await createPreparedContext([firstRoot, secondRoot], indexRootDir);
+  const secondWorkspaceFingerprints = new Map(
+    secondContext.workspace.workspaces.map((workspace) => [workspace.root, workspace.index.workspaceFingerprint] as const),
+  );
+  const secondResult = await searchDefinitions(secondContext, {
+    query: "greet",
+    language: "typescript",
+  });
+
+  assert.equal(secondWorkspaceFingerprints.get(firstRoot), firstWorkspaceFingerprints.get(firstRoot));
+  assert.equal(secondWorkspaceFingerprints.get(secondRoot), firstWorkspaceFingerprints.get(secondRoot));
+  assert.deepEqual(
+    secondContext.workspace.workspaces.map((workspace) => workspace.index.lastBuiltAt),
+    firstContext.workspace.workspaces.map((workspace) => workspace.index.lastBuiltAt),
+  );
+  assert.deepEqual(
+    secondResult.results.map((result) => `${result.workspaceRoot}:${result.relativePath}`),
+    [
+      `${firstRoot}:src/shared.ts`,
+      `${secondRoot}:src/shared.ts`,
+    ],
+  );
 });

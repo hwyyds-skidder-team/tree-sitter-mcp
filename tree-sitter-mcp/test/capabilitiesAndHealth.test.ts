@@ -244,7 +244,12 @@ test("capabilities and health expose ordered roots for multi-root set_workspace 
         root: string | null;
         roots: string[];
         workspaceCount: number;
-        workspaces: Array<{ root: string; searchableFileCount: number }>;
+        index: { workspaceFingerprint: string | null };
+        workspaces: Array<{
+          root: string;
+          searchableFileCount: number;
+          index: { workspaceFingerprint: string | null; indexedFileCount: number };
+        }>;
         searchableFileCount: number;
         unsupportedFileCount: number;
       };
@@ -254,12 +259,18 @@ test("capabilities and health expose ordered roots for multi-root set_workspace 
     assert.equal(workspacePayload.workspace.root, firstRoot);
     assert.deepEqual(workspacePayload.workspace.roots, [firstRoot, secondRoot]);
     assert.equal(workspacePayload.workspace.workspaceCount, 2);
+    assert.ok(workspacePayload.workspace.index.workspaceFingerprint);
     assert.deepEqual(
       workspacePayload.workspace.workspaces.map((workspace) => workspace.root),
       [firstRoot, secondRoot],
     );
     assert.deepEqual(
       workspacePayload.workspace.workspaces.map((workspace) => workspace.searchableFileCount),
+      [1, 1],
+    );
+    assert.ok(workspacePayload.workspace.workspaces.every((workspace) => workspace.index.workspaceFingerprint));
+    assert.deepEqual(
+      workspacePayload.workspace.workspaces.map((workspace) => workspace.index.indexedFileCount),
       [1, 1],
     );
     assert.equal(workspacePayload.workspace.searchableFileCount, 2);
@@ -284,11 +295,17 @@ test("capabilities and health expose ordered roots for multi-root set_workspace 
         root: string | null;
         roots: string[];
         workspaceCount: number;
+        workspaces: Array<{ root: string; index: { workspaceFingerprint: string | null } }>;
       };
     };
     assert.equal(capabilities.workspace.root, firstRoot);
     assert.deepEqual(capabilities.workspace.roots, [firstRoot, secondRoot]);
     assert.equal(capabilities.workspace.workspaceCount, 2);
+    assert.deepEqual(
+      capabilities.workspace.workspaces.map((workspace) => workspace.root),
+      [firstRoot, secondRoot],
+    );
+    assert.ok(capabilities.workspace.workspaces.every((workspace) => workspace.index.workspaceFingerprint));
 
     const healthResult = await client.callTool({
       name: "get_health",
@@ -299,16 +316,19 @@ test("capabilities and health expose ordered roots for multi-root set_workspace 
         root: string | null;
         roots: string[];
         workspaceCount: number;
-        workspaces: Array<{ root: string }>;
+        index: { workspaceFingerprint: string | null };
+        workspaces: Array<{ root: string; index: { workspaceFingerprint: string | null } }>;
       };
     };
     assert.equal(health.workspace.root, firstRoot);
     assert.deepEqual(health.workspace.roots, [firstRoot, secondRoot]);
     assert.equal(health.workspace.workspaceCount, 2);
+    assert.ok(health.workspace.index.workspaceFingerprint);
     assert.deepEqual(
       health.workspace.workspaces.map((workspace) => workspace.root),
       [firstRoot, secondRoot],
     );
+    assert.ok(health.workspace.workspaces.every((workspace) => workspace.index.workspaceFingerprint));
   } finally {
     await client.close().catch(() => undefined);
     await transport.close().catch(() => undefined);

@@ -123,6 +123,13 @@ test("semantic tools search supported files, respect exclusions, and return acti
     });
     const searchPayload = searchWorkspaceSymbolsResult.structuredContent as {
       results: Array<{ name: string; relativePath: string }>;
+      workspaceRoots: string[];
+      workspaceBreakdown: Array<{
+        workspaceRoot: string;
+        searchedFiles: number;
+        matchedFiles: number;
+        returnedResults: number;
+      }>;
       diagnostics: Array<{ code: string; relativePath?: string }>;
       freshness: { state: string; degradedFiles: string[]; workspaceFingerprint: string | null };
     };
@@ -140,6 +147,15 @@ test("semantic tools search supported files, respect exclusions, and return acti
       setWorkspacePayload.workspace.index.workspaceFingerprint,
     );
     assert.ok(searchPayload.diagnostics.every((diagnostic) => diagnostic.relativePath !== "node_modules/pkg/ignored.ts"));
+    assert.deepEqual(searchPayload.workspaceRoots, [workspaceRoot]);
+    assert.deepEqual(searchPayload.workspaceBreakdown, [
+      {
+        workspaceRoot,
+        searchedFiles: 3,
+        matchedFiles: 2,
+        returnedResults: 3,
+      },
+    ]);
 
     const pythonOnlyResult = await client.callTool({
       name: "search_workspace_symbols",

@@ -141,6 +141,7 @@ test("reference tools chain definition discovery into reference search over stdi
     });
     assert.notEqual(firstPage.isError, true);
     const firstPagePayload = firstPage.structuredContent as {
+      workspaceRoots: string[];
       target: { name: string; relativePath: string } | null;
       pagination: { limit: number; offset: number; returned: number; total: number; hasMore: boolean; nextOffset: number | null };
       results: Array<{
@@ -148,6 +149,12 @@ test("reference tools chain definition discovery into reference search over stdi
         referenceKind: string;
         enclosingContext: { kind: string; name: string | null } | null;
         contextSnippet: { text: string; truncated: boolean } | null;
+      }>;
+      workspaceBreakdown: Array<{
+        workspaceRoot: string;
+        searchedFiles: number;
+        matchedFiles: number;
+        returnedResults: number;
       }>;
       freshness: { state: string; workspaceFingerprint: string | null };
       diagnostics: Array<{ code: string; relativePath?: string }>;
@@ -167,6 +174,15 @@ test("reference tools chain definition discovery into reference search over stdi
     assert.ok(firstPagePayload.results.every((reference) => reference.contextSnippet?.text.includes("greetUser")));
     assert.ok(firstPagePayload.results.some((reference) => reference.enclosingContext?.name === "sayHello"));
     assert.equal(firstPagePayload.diagnostics.length, 0);
+    assert.deepEqual(firstPagePayload.workspaceRoots, [workspaceRoot]);
+    assert.deepEqual(firstPagePayload.workspaceBreakdown, [
+      {
+        workspaceRoot,
+        searchedFiles: 2,
+        matchedFiles: 2,
+        returnedResults: 2,
+      },
+    ]);
 
     const secondPage = await firstSession.client.callTool({
       name: "search_references",
