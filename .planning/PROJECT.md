@@ -11,10 +11,10 @@ An AI agent can quickly find the right code symbols, definitions, references, an
 ## Current State
 
 - **Shipped milestone:** `v1.0 Semantic Search` archived and tagged on 2026-03-21 after implementation completed on 2026-03-15.
-- **Planning status:** `v1.1 Search Depth and Scale` is in active execution; Phase 05 multi-workspace search completed on 2026-03-21 while Phase 04 freshness diagnostics still has remaining work.
-- **Product surface:** standalone MCP server with local stdio transport, persistent index reuse, capability/health inspection, workspace discovery, multi-workspace symbol/definition/reference search, workspace-aware narrowing, deterministic federated ranking, and machine-readable per-workspace result breakdowns.
-- **Codebase shape:** TypeScript package under `tree-sitter-mcp/` with dedicated regression coverage for stdio tools, indexing, workspace discovery, and federated multi-workspace search behavior.
-- **Execution history:** v1.0 shipped end-to-end, Phase 04 began the persistent-index milestone work, and Phase 05 is now fully implemented and verified ahead of relationship-view planning.
+- **Planning status:** `v1.1 Search Depth and Scale` now has Phase 04 persistent indexing and Phase 05 multi-workspace search fully implemented and verified; Phase 06 relationship retrieval is the next planned step.
+- **Product surface:** standalone MCP server with local stdio transport, persistent index reuse, capability/health inspection, freshness-aware search payloads, workspace discovery, multi-workspace symbol/definition/reference search, deterministic federated ranking, and machine-readable per-workspace result breakdowns.
+- **Codebase shape:** TypeScript package under `tree-sitter-mcp/` with regression coverage for stdio tools, indexing, workspace discovery, restart reuse, degraded refresh handling, and federated multi-workspace search behavior.
+- **Execution history:** v1.0 shipped end-to-end; v1.1 now has verified persistent indexing plus verified multi-workspace search, leaving relationship-view work as the remaining milestone focus.
 
 ## Current Milestone: v1.1 Search Depth and Scale
 
@@ -32,11 +32,11 @@ An AI agent can quickly find the right code symbols, definitions, references, an
 - ✓ Expose read-only MCP search tools for symbol-aware code discovery in a local workspace — v1.0
 - ✓ Use Tree-sitter parsing to power definitions, references, snippets, and stable source ranges for semantic search — v1.0
 - ✓ Keep the first release optimized for AI-agent workflows with structured payloads, pagination, and low operational complexity — v1.0
+- ✓ Reuse persistent semantic state so repeated searches stay fast without hiding freshness from the caller — Validated in Phase 04 on 2026-03-21
 - ✓ Expand search across multiple workspaces while preserving clear workspace attribution and narrowing controls — Validated in Phase 05 on 2026-03-21
 
 ### Active
 
-- [ ] Reuse persistent semantic state so repeated searches stay fast without hiding freshness from the caller.
 - [ ] Add relationship-aware retrieval so agents can inspect direct dependencies and likely impact around a symbol.
 
 ### Out of Scope
@@ -50,7 +50,7 @@ An AI agent can quickly find the right code symbols, definitions, references, an
 
 `tree-sitter-mcp` now ships as a dedicated Node 22+/TypeScript package built on `@modelcontextprotocol/sdk`, `tree-sitter`, builtin JavaScript/TypeScript/TSX/Python grammars, and `zod` schemas for tool contracts. The v1 foundation already proved that an MCP client can bootstrap the server, inspect its capabilities, search for definitions or references, and chain structured results into later agent steps without mutating the workspace.
 
-The active milestone stays intentionally search-centric: persistent semantic state improves repeat-query performance, Phase 05 now proves federated search across multiple roots with stable ranking and explainable payloads, and the remaining milestone work can build relationship-aware retrieval on top of that stronger base.
+The active milestone remains intentionally search-centric: persistent semantic state now gives repeat-query performance plus explicit freshness reporting, Phase 05 proved federated search across multiple roots with stable ranking and explainable payloads, and the remaining milestone work can focus on relationship-aware retrieval on top of that stronger base.
 
 ## Constraints
 
@@ -73,9 +73,9 @@ The active milestone stays intentionally search-centric: persistent semantic sta
 | Expose capabilities and health as explicit MCP tools | Makes the server debuggable before deeper semantic workflows exist | ✓ Shipped in v1.0 |
 | Return structured diagnostics for unsupported files and parse failures | Prevents silent skips and keeps agent workflows actionable | ✓ Shipped in v1.0 |
 | Keep definition/reference workflows layered on shared backend normalization | Preserves one source of truth for ranking, diagnostics, and narrowing semantics | ✓ Validated across v1.0 and v1.1 |
-| Refocus v1.1 on search improvements before transport expansion | User priority is stronger search, not more connection options | ✓ Confirmed by completing Phase 05 before any HTTP work |
-| Pair persistent indexing with multi-workspace search in v1.1 | Both features need shared workspace-state and freshness-tracking primitives | ⚠ Phase 05 complete; remaining Phase 04 freshness diagnostics still need completion |
+| Refocus v1.1 on search improvements before transport expansion | User priority is stronger search, not more connection options | ✓ Confirmed by shipping persistent indexing and multi-workspace search before any HTTP work |
+| Pair persistent indexing with multi-workspace search in v1.1 | Both features need shared workspace-state and freshness-tracking primitives | ✓ Validated in Phases 04 and 05 |
 | Start relationship views with direct semantic links instead of whole-program graphs | Reuse the existing definition/reference pipeline before attempting heavier analysis | — Pending Phase 06 |
 
 ---
-*Last updated: 2026-03-21 after completing Phase 05 multi-workspace search quality verification*
+*Last updated: 2026-03-21 after completing Phase 04 persistent indexing verification*

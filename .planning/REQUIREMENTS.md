@@ -9,7 +9,7 @@
 
 - [x] **PERF-01**: User can reuse a persistent semantic index or cache across repeated queries instead of reparsing every request from scratch.
 - [x] **PERF-02**: User can trust indexed search results because changed files or workspaces are detected and refreshed before stale answers are returned.
-- [ ] **PERF-03**: User can inspect index/cache mode, freshness, and coverage through explicit diagnostics or health output.
+- [x] **PERF-03**: User can inspect index/cache mode, freshness, and coverage through explicit diagnostics or health output.
 
 ### Search Reach
 
@@ -57,7 +57,7 @@
 |-------------|-------|--------|
 | PERF-01 | Phase 4 | Complete |
 | PERF-02 | Phase 4 | Complete |
-| PERF-03 | Phase 4 | Pending |
+| PERF-03 | Phase 4 | Complete |
 | SEARCH-01 | Phase 5 | Complete |
 | SEARCH-02 | Phase 5 | Complete |
 | SEARCH-03 | Phase 5 | Complete |
@@ -73,4 +73,4 @@
 
 ---
 *Requirements defined: 2026-03-21*
-*Last updated: 2026-03-21 after completing Phase 5 multi-workspace search quality work*
+*Last updated: 2026-03-21 after completing Phase 4 persistent indexing and freshness work*

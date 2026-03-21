@@ -7,7 +7,7 @@
 
 ## Current Status
 
-Phase 05 is complete and verified with all 3 plans summarized. Phase 04 still has 2 remaining plans, so the next milestone work returns to freshness diagnostics before Phase 06 relationship-view planning begins.
+Phases 04 and 05 are now both complete and verified. The next milestone step is Phase 06 relationship-view planning, building on the verified persistent-index and multi-workspace search foundation.
 
 ## Overview
 
@@ -15,7 +15,7 @@ Phase 05 is complete and verified with all 3 plans summarized. Phase 04 still ha
 
 ## Phases
 
-- [ ] **Phase 4: Persistent Indexing and Query Freshness** - Add reusable semantic state, invalidation, and explicit freshness diagnostics.
+- [x] **Phase 4: Persistent Indexing and Query Freshness** - Add reusable semantic state, invalidation, and explicit freshness diagnostics.
 - [x] **Phase 5: Multi-Workspace Search and Result Quality** - Expand search across workspace roots and improve narrowing/ranking for large result sets.
 - [ ] **Phase 6: Relationship Views and Impact Discovery** - Layer direct semantic relationships and impact-oriented retrieval on top of the stronger search foundation.
 
@@ -34,8 +34,8 @@ Phase 05 is complete and verified with all 3 plans summarized. Phase 04 still ha
 
 Plans:
 - [x] 04-01: Design persistent semantic state, storage boundaries, and invalidation rules.
-- [ ] 04-02: Implement index/cache build, reuse, and targeted refresh paths for repeated queries.
-- [ ] 04-03: Surface freshness diagnostics and add regression coverage for stale-result prevention.
+- [x] 04-02: Implement index/cache build, reuse, and targeted refresh paths for repeated queries.
+- [x] 04-03: Surface freshness diagnostics and add regression coverage for stale-result prevention.
 
 ### Phase 5: Multi-Workspace Search and Result Quality
 **Goal**: Let agents search across multiple workspace roots while keeping large result sets understandable, attributable, and filterable.
@@ -76,7 +76,7 @@ Phases execute in numeric order: 4 → 5 → 6
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 4. Persistent Indexing and Query Freshness | v1.1 | 1/3 | In Progress | - |
+| 4. Persistent Indexing and Query Freshness | v1.1 | 3/3 | Complete | 2026-03-21 |
 | 5. Multi-Workspace Search and Result Quality | v1.1 | 3/3 | Complete | 2026-03-21 |
 | 6. Relationship Views and Impact Discovery | v1.1 | 0/3 | Not started | - |
 
