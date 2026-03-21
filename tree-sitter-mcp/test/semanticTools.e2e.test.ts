@@ -46,6 +46,7 @@ async function createWorkspaceFixture(): Promise<string> {
 
 test("semantic tools search supported files, respect exclusions, and return actionable diagnostics", async () => {
   const workspaceRoot = await createWorkspaceFixture();
+  const indexRootDir = await fs.mkdtemp(path.join(os.tmpdir(), "tree-sitter-mcp-semantic-index-"));
   const client = new Client({
     name: "tree-sitter-mcp-semantic-test",
     version: "0.1.0",
@@ -54,18 +55,44 @@ test("semantic tools search supported files, respect exclusions, and return acti
     command: process.execPath,
     args: [serverEntry],
     cwd: packageRoot,
-    env: process.env as Record<string, string>,
+    env: {
+      ...(process.env as Record<string, string>),
+      TREE_SITTER_MCP_INDEX_DIR: indexRootDir,
+    },
   });
 
   try {
     await client.connect(transport);
 
-    await client.callTool({
+    const setWorkspaceResult = await client.callTool({
       name: "set_workspace",
       arguments: {
         root: workspaceRoot,
       },
     });
+    const setWorkspacePayload = setWorkspaceResult.structuredContent as {
+      workspace: {
+        root: string | null;
+        searchableFileCount: number;
+        unsupportedFileCount: number;
+        index: { state: string; workspaceFingerprint: string | null };
+      };
+    };
+    assert.equal(setWorkspacePayload.workspace.root, workspaceRoot);
+    assert.equal(setWorkspacePayload.workspace.searchableFileCount, 3);
+    assert.equal(setWorkspacePayload.workspace.unsupportedFileCount, 1);
+    assert.notEqual(setWorkspacePayload.workspace.index.state, "rebuilding");
+    assert.ok(setWorkspacePayload.workspace.index.workspaceFingerprint);
+    await fs.access(path.join(
+      indexRootDir,
+      setWorkspacePayload.workspace.index.workspaceFingerprint ?? "",
+      "manifest.json",
+    ));
+    await fs.access(path.join(
+      indexRootDir,
+      setWorkspacePayload.workspace.index.workspaceFingerprint ?? "",
+      "records.json",
+    ));
 
     const listFileSymbolsResult = await client.callTool({
       name: "list_file_symbols",

@@ -10,6 +10,9 @@ async function main(): Promise<void> {
   const server = createServer(context);
   const transport = new StdioServerTransport();
 
+  // Keep stdin flowing when the server is launched as a child process over stdio.
+  process.stdin.resume();
+
   process.on("SIGINT", async () => {
     await server.close();
     process.exit(0);

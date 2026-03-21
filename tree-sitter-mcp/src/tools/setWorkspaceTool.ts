@@ -9,6 +9,7 @@ import {
   mergeExclusions,
   SearchableFileRecordSchema,
   summarizeWorkspace,
+  WorkspaceSummarySchema,
   UnsupportedFileRecordSchema,
 } from "../workspace/workspaceState.js";
 
@@ -18,13 +19,7 @@ const SetWorkspaceInputSchema = z.object({
 });
 
 const SetWorkspaceOutputSchema = z.object({
-  workspace: z.object({
-    root: z.string().nullable(),
-    exclusions: z.array(z.string()),
-    searchableFileCount: z.number().int().nonnegative(),
-    unsupportedFileCount: z.number().int().nonnegative(),
-    lastUpdatedAt: z.string().nullable(),
-  }),
+  workspace: WorkspaceSummarySchema,
   searchableFilesSample: z.array(SearchableFileRecordSchema),
   unsupportedFilesSample: z.array(UnsupportedFileRecordSchema),
   diagnostics: z.array(DiagnosticSchema),
@@ -59,6 +54,11 @@ export function registerSetWorkspaceTool(server: McpServer, context: ServerConte
           searchableFiles: discovery.searchableFiles,
           unsupportedFiles: discovery.unsupportedFiles,
         });
+        context.semanticIndex.replaceWorkspace({
+          root,
+          exclusions,
+        });
+        await context.semanticIndex.ensureReady(context);
 
         const payload = {
           workspace: summarizeWorkspace(context.workspace),
