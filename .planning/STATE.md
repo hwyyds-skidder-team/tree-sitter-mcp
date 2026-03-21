@@ -1,14 +1,14 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.1
-milestone_name: Scale, Transport, and Workspace Reach
+milestone_name: Search Depth and Scale
 current_phase: 04
-current_phase_name: Cache and Workspace Federation
+current_phase_name: Persistent Indexing and Query Freshness
 current_plan: not_started
 status: ready_to_plan
-stopped_at: Milestone v1.1 initialized; Phase 04 is ready for discussion/planning.
-last_updated: "2026-03-21T13:31:56+08:00"
-last_activity: 2026-03-21 - Initialized milestone v1.1 Scale, Transport, and Workspace Reach.
+stopped_at: Milestone v1.1 refocused on search improvements; Phase 04 is ready for discussion/planning.
+last_updated: "2026-03-21T13:42:22+08:00"
+last_activity: 2026-03-21 - Refocused milestone v1.1 on search improvements.
 progress:
   total_phases: 3
   completed_phases: 0
@@ -24,17 +24,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-21)
 
 **Core Value:** An AI agent can quickly find the right code symbols, definitions, references, and related source regions in a workspace without relying on brittle grep-style text search.
-**Current Focus:** Phase 04 - Cache and Workspace Federation
+**Current Focus:** Phase 04 - Persistent Indexing and Query Freshness
 
 ## Current Position
 
 **Current Phase:** 04
-**Current Phase Name:** Cache and Workspace Federation
+**Current Phase Name:** Persistent Indexing and Query Freshness
 **Total Phases:** 3
 **Current Plan:** Not started
 **Total Plans in Phase:** 3
 **Status:** Ready to plan
-**Last Activity:** 2026-03-21 - Initialized milestone v1.1 Scale, Transport, and Workspace Reach.
+**Last Activity:** 2026-03-21 - Refocused milestone v1.1 on search improvements.
 **Progress:** [░░░░░░░░░░] 0%
 
 ## Decisions Made
@@ -52,9 +52,9 @@ See: .planning/PROJECT.md (updated 2026-03-21)
 | Phase 2 | Expose `search_definitions` and `resolve_definition` as read-only stdio tools | Completes the user-facing definition workflow without introducing writes or persistent indexing |
 | Phase 3 | Continue planning without CONTEXT.md or RESEARCH.md | User invoked planning directly and workflow config disables research for this project |
 | Phase 3 | Keep `search_references` as a thin MCP adapter over the shared backend | Preserves one source of truth for diagnostics, context shaping, and pagination |
-| Phase 3 | Package standalone startup through a `bin` entry while keeping stdio-only docs | Makes local MCP launch easier without implying unsupported transports |
-| Init | Pair persistent cache work with multi-workspace search in v1.1 | Both features need shared workspace state and freshness tracking |
-| Init | Keep Streamable HTTP additive to the shipped stdio workflow | Broader access should not regress the proven local agent path |
+| Phase 3 | Package standalone startup through a `bin` entry while keeping stdio-only docs | Makes local launch easier without implying unsupported transports |
+| Init | Refocus v1.1 on search improvements before transport expansion | User priority is stronger search, not more connection options |
+| Init | Pair persistent indexing with multi-workspace search in v1.1 | Both features need shared workspace state and freshness tracking |
 | Init | Start relationship views with direct semantic links instead of whole-program graphs | Reuse the existing definition/reference pipeline before heavier analysis |
 
 ## Pending Todos
@@ -68,5 +68,5 @@ None.
 ## Session
 
 **Last Date:** 2026-03-21
-**Stopped At:** Defined milestone v1.1 and prepared Phase 04 for discussion/planning.
+**Stopped At:** Revised the milestone so Phase 04 starts with search performance rather than HTTP.
 **Resume File:** .planning/ROADMAP.md
