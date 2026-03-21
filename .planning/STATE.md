@@ -6,9 +6,9 @@ current_phase: 04
 current_phase_name: Persistent Indexing and Query Freshness
 current_plan: not_started
 status: ready_to_plan
-stopped_at: Milestone v1.1 refocused on search improvements; Phase 04 is ready for discussion/planning.
-last_updated: "2026-03-21T13:42:22+08:00"
-last_activity: 2026-03-21 - Refocused milestone v1.1 on search improvements.
+stopped_at: Phase 4 context gathered
+last_updated: "2026-03-21T13:52:37+08:00"
+last_activity: 2026-03-21 - Captured Phase 04 context for Persistent Indexing and Query Freshness.
 progress:
   total_phases: 3
   completed_phases: 0
@@ -34,7 +34,7 @@ See: .planning/PROJECT.md (updated 2026-03-21)
 **Current Plan:** Not started
 **Total Plans in Phase:** 3
 **Status:** Ready to plan
-**Last Activity:** 2026-03-21 - Refocused milestone v1.1 on search improvements.
+**Last Activity:** 2026-03-21 - Captured Phase 04 context for Persistent Indexing and Query Freshness.
 **Progress:** [░░░░░░░░░░] 0%
 
 ## Decisions Made
@@ -68,5 +68,5 @@ None.
 ## Session
 
 **Last Date:** 2026-03-21
-**Stopped At:** Revised the milestone so Phase 04 starts with search performance rather than HTTP.
-**Resume File:** .planning/ROADMAP.md
+**Stopped At:** Phase 4 context gathered
+**Resume File:** .planning/phases/04-persistent-indexing-and-query-freshness/04-CONTEXT.md
