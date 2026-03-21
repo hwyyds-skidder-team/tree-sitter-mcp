@@ -1,16 +1,20 @@
-import path from "node:path";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { createDiagnostic, DiagnosticSchema } from "../diagnostics/diagnosticFactory.js";
 import { SearchFreshnessSchema } from "../indexing/indexTypes.js";
 import {
+  filterSearchableFiles,
+  matchesDefinitionFilters,
+  normalizeDefinitionFilters,
+} from "../definitions/definitionFilters.js";
+import {
   SymbolKindSchema,
   SymbolMatchSchema,
+  type SymbolMatch,
 } from "../queries/queryCatalog.js";
+import { compareWorkspaceAwareMatches, scoreNameMatch } from "../results/searchRanking.js";
 import type { ServerContext } from "../server/serverContext.js";
 import { createDefaultFreshness, createFreshnessDiagnostics } from "./indexFreshness.js";
-import { createExclusionPolicy } from "../workspace/exclusionPolicy.js";
-import { resolveWorkspacePath } from "../workspace/resolveWorkspace.js";
 
 const SearchWorkspaceSymbolsInputSchema = z.object({
   query: z.string().min(1),
@@ -37,6 +41,12 @@ const SearchWorkspaceSymbolsOutputSchema = z.object({
   diagnostics: z.array(DiagnosticSchema),
 });
 
+const IMMEDIATE_ERROR_CODES = new Set([
+  "unsupported_language",
+  "workspace_path_out_of_scope",
+  "workspace_root_invalid",
+]);
+
 export function registerSearchWorkspaceSymbolsTool(server: McpServer, context: ServerContext): void {
   server.registerTool(
     "search_workspace_symbols",
@@ -54,15 +64,15 @@ export function registerSearchWorkspaceSymbolsTool(server: McpServer, context: S
     },
     async (input) => {
       const limit = input.limit ?? 50;
-      const normalizedQuery = input.query.toLowerCase();
-      const filters = {
-        language: input.language ?? null,
-        pathPrefix: input.pathPrefix ?? null,
-        symbolKinds: input.symbolKinds ?? [],
-        limit,
-      };
+      const normalizedQuery = input.query.trim().toLowerCase();
 
       if (!context.workspace.root) {
+        const filters = {
+          language: input.language ?? null,
+          pathPrefix: input.pathPrefix ?? null,
+          symbolKinds: input.symbolKinds ?? [],
+          limit,
+        };
         const diagnostic = createDiagnostic({
           code: "workspace_not_set",
           message: "No workspace is configured.",
@@ -87,14 +97,26 @@ export function registerSearchWorkspaceSymbolsTool(server: McpServer, context: S
         };
       }
 
-      if (input.language && !context.languageRegistry.getById(input.language)) {
-        const diagnostic = createDiagnostic({
-          code: "unsupported_language",
-          message: `Language ${input.language} is not registered in this server instance.`,
-          reason: "The requested language filter does not match any builtin grammar registration.",
-          nextStep: "Inspect get_capabilities for supported language identifiers and retry.",
-          languageId: input.language,
-        });
+      const normalizedFiltersResult = normalizeDefinitionFilters({
+        workspaceRoot: context.workspace.root,
+        configuredRoots: context.workspace.roots,
+        languageRegistry: context.languageRegistry,
+        input: {
+          language: input.language,
+          pathPrefix: input.pathPrefix,
+          symbolKinds: input.symbolKinds,
+        },
+      });
+
+      const filters = {
+        language: normalizedFiltersResult.filters.language,
+        pathPrefix: normalizedFiltersResult.filters.pathPrefix,
+        symbolKinds: normalizedFiltersResult.filters.symbolKinds,
+        limit,
+      };
+
+      if (normalizedFiltersResult.diagnostic) {
+        const diagnostic = normalizedFiltersResult.diagnostic;
 
         return {
           isError: true,
@@ -112,44 +134,6 @@ export function registerSearchWorkspaceSymbolsTool(server: McpServer, context: S
           },
         };
       }
-
-      let normalizedPathPrefix: string | null = null;
-      if (input.pathPrefix) {
-        try {
-          const resolvedPathPrefix = resolveWorkspacePath(context.workspace.root, input.pathPrefix);
-          normalizedPathPrefix = path.relative(context.workspace.root, resolvedPathPrefix).split(path.sep).join("/");
-          if (normalizedPathPrefix === "") {
-            normalizedPathPrefix = null;
-          }
-        } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
-          const diagnostic = createDiagnostic({
-            code: "workspace_path_out_of_scope",
-            message: "Path filter escapes the configured workspace root.",
-            reason: message,
-            nextStep: "Use a pathPrefix inside the active workspace root.",
-            filePath: input.pathPrefix,
-          });
-
-          return {
-            isError: true,
-            content: [{ type: "text" as const, text: diagnostic.message }],
-            structuredContent: {
-              workspaceRoot: context.workspace.root,
-              query: input.query,
-              searchedFiles: 0,
-              matchedFiles: 0,
-              truncated: false,
-              filters,
-              results: [],
-              freshness: createDefaultFreshness(context.workspace.index),
-              diagnostics: [diagnostic],
-            },
-          };
-        }
-      }
-
-      const exclusionPolicy = createExclusionPolicy(context.workspace.root, context.workspace.exclusions);
       const diagnostics = [...context.workspace.unsupportedFiles.slice(0, 20).map((file) => createDiagnostic({
         code: "unsupported_file",
         message: `Skipping unsupported file ${file.relativePath}.`,
@@ -160,48 +144,38 @@ export function registerSearchWorkspaceSymbolsTool(server: McpServer, context: S
         severity: "info",
       }))];
       const freshIndex = await context.semanticIndex.getFreshRecords(context);
+      const searchableFiles = filterSearchableFiles(freshIndex.records, normalizedFiltersResult.filters);
 
-      const results = [];
+      const matches: SymbolMatch[] = [];
       let searchedFiles = 0;
 
-      for (const file of freshIndex.records) {
-        if (input.language && file.languageId !== input.language) {
-          continue;
-        }
-
-        if (normalizedPathPrefix && !(file.relativePath === normalizedPathPrefix || file.relativePath.startsWith(`${normalizedPathPrefix}/`))) {
-          continue;
-        }
-
-        if (exclusionPolicy.shouldExclude(file.path)) {
-          continue;
-        }
-
+      for (const file of searchableFiles) {
         searchedFiles += 1;
         diagnostics.push(...file.diagnostics);
 
         for (const symbol of file.symbols) {
-          if (!symbol.name.toLowerCase().includes(normalizedQuery)) {
+          if (!matchesDefinitionFilters(symbol, normalizedFiltersResult.filters)) {
             continue;
           }
 
-          if (filters.symbolKinds.length > 0 && !filters.symbolKinds.includes(symbol.kind)) {
+          if (scoreNameMatch(symbol.name, normalizedQuery) === null) {
             continue;
           }
 
-          results.push(symbol);
-          if (results.length >= limit) {
-            break;
-          }
-        }
-
-        if (results.length >= limit) {
-          break;
+          matches.push(symbol);
         }
       }
 
-      const uniqueFiles = new Set(results.map((symbol) => symbol.relativePath));
-      const truncated = results.length >= limit;
+      matches.sort((left, right) => compareWorkspaceAwareMatches(left, right, {
+        normalizedQuery,
+        workspaceRoots: context.workspace.roots,
+      }));
+
+      const results = matches.slice(0, limit);
+      const uniqueFiles = new Set(
+        results.map((symbol) => JSON.stringify([symbol.workspaceRoot, symbol.relativePath])),
+      );
+      const truncated = matches.length > limit;
       const payload = {
         workspaceRoot: context.workspace.root,
         query: input.query,
@@ -215,6 +189,9 @@ export function registerSearchWorkspaceSymbolsTool(server: McpServer, context: S
       };
 
       return {
+        ...(diagnostics.some((diagnostic) => IMMEDIATE_ERROR_CODES.has(diagnostic.code)) && searchedFiles === 0
+          ? { isError: true }
+          : {}),
         content: [
           {
             type: "text" as const,

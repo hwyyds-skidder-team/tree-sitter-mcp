@@ -191,8 +191,13 @@ export async function searchReferences(
   }
 
   matches.sort((left, right) => {
-    if (left.workspaceRoot !== right.workspaceRoot) {
-      return left.workspaceRoot.localeCompare(right.workspaceRoot);
+    const workspaceOrderComparison = compareWorkspaceRootsByConfiguredOrder(
+      left.workspaceRoot,
+      right.workspaceRoot,
+      context.workspace.roots,
+    );
+    if (workspaceOrderComparison !== 0) {
+      return workspaceOrderComparison;
     }
 
     if (left.relativePath !== right.relativePath) {
@@ -248,6 +253,36 @@ export async function searchReferences(
     pagination: pagedResults.pagination,
     truncated,
   };
+}
+
+function compareWorkspaceRootsByConfiguredOrder(
+  left: string,
+  right: string,
+  workspaceRoots: readonly string[],
+): number {
+  if (left === right) {
+    return 0;
+  }
+
+  const order = new Map(workspaceRoots.map((workspaceRoot, index) => [workspaceRoot, index] as const));
+  const leftIndex = order.get(left);
+  const rightIndex = order.get(right);
+
+  if (leftIndex !== undefined || rightIndex !== undefined) {
+    if (leftIndex === undefined) {
+      return 1;
+    }
+
+    if (rightIndex === undefined) {
+      return -1;
+    }
+
+    if (leftIndex !== rightIndex) {
+      return leftIndex - rightIndex;
+    }
+  }
+
+  return left.localeCompare(right);
 }
 
 function isDefinitionSelection(reference: ReferenceMatch, target: DefinitionMatch): boolean {

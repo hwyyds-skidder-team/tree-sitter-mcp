@@ -1,6 +1,7 @@
 import { createDiagnostic, type Diagnostic } from "../diagnostics/diagnosticFactory.js";
 import { createSearchFreshness, type SearchFreshness } from "../indexing/indexTypes.js";
 import type { SymbolKind } from "../queries/queryCatalog.js";
+import { compareWorkspaceAwareMatches, scoreNameMatch } from "../results/searchRanking.js";
 import type { ServerContext } from "../server/serverContext.js";
 import {
   filterSearchableFiles,
@@ -114,7 +115,7 @@ export async function searchDefinitions(
   }
 
   const diagnostics: Diagnostic[] = [];
-  const matches: Array<DefinitionMatch & { score: number }> = [];
+  const matches: DefinitionMatch[] = [];
   const freshIndex = await context.semanticIndex.getFreshRecords(context);
   const searchableFiles = filterSearchableFiles(freshIndex.records, normalizedFiltersResult.filters);
   let searchedFiles = 0;
@@ -128,36 +129,23 @@ export async function searchDefinitions(
         continue;
       }
 
-      const score = scoreDefinitionMatch(definition, normalizedQuery);
-      if (score === null) {
+      if (scoreNameMatch(definition.name, normalizedQuery) === null) {
         continue;
       }
 
-      matches.push({
-        ...definition,
-        score,
-      });
+      matches.push(definition);
     }
   }
 
   matches.sort((left, right) => {
-    if (left.score != right.score) {
-      return left.score - right.score;
-    }
-
-    if (left.workspaceRoot !== right.workspaceRoot) {
-      return left.workspaceRoot.localeCompare(right.workspaceRoot);
-    }
-
-    if (left.relativePath != right.relativePath) {
-      return left.relativePath.localeCompare(right.relativePath);
-    }
-
-    return left.range.start.offset - right.range.start.offset;
+    return compareWorkspaceAwareMatches(left, right, {
+      normalizedQuery,
+      workspaceRoots: context.workspace.roots,
+    });
   });
 
   const truncated = matches.length > limit;
-  const results = matches.slice(0, limit).map(({ score: _score, ...definition }) => definition);
+  const results = matches.slice(0, limit);
 
   return {
     filters: normalizedFiltersResult.filters,
@@ -170,22 +158,4 @@ export async function searchDefinitions(
     ).size,
     truncated,
   };
-}
-
-function scoreDefinitionMatch(definition: DefinitionMatch, normalizedQuery: string): number | null {
-  const normalizedName = definition.name.toLowerCase();
-  if (normalizedName === normalizedQuery) {
-    return 0;
-  }
-
-  if (normalizedName.startsWith(normalizedQuery)) {
-    return 100 + (normalizedName.length - normalizedQuery.length);
-  }
-
-  const containsIndex = normalizedName.indexOf(normalizedQuery);
-  if (containsIndex >= 0) {
-    return 200 + containsIndex + (normalizedName.length - normalizedQuery.length);
-  }
-
-  return null;
 }
