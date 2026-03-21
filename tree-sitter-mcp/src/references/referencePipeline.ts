@@ -55,6 +55,7 @@ export async function collectFileReferences(
     referenceKind: capture.referenceKind,
     symbolKind: request.symbolKind ?? null,
     languageId: language.id,
+    workspaceRoot: file.workspaceRoot ?? context.workspace.root ?? file.path,
     filePath: file.path,
     relativePath: file.relativePath,
     range: createSourceRange(

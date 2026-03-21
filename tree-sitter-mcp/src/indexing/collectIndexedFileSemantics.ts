@@ -25,7 +25,7 @@ import type { ServerContext } from "../server/serverContext.js";
 import type { SearchableFileRecord } from "../workspace/workspaceState.js";
 
 export const PersistedIndexedFileRecordSchema = z.object({
-  workspaceRoot: z.string().optional(),
+  workspaceRoot: z.string().min(1),
   path: z.string(),
   relativePath: z.string(),
   languageId: z.string(),
@@ -63,6 +63,7 @@ export async function collectIndexedFileSemantics(
   snapshotInput?: IndexedFileSnapshot,
 ): Promise<PersistedIndexedFileRecord> {
   const fileSnapshot = snapshotInput ?? await readIndexedFileSnapshot(file);
+  const workspaceRoot = resolveIndexedRecordWorkspaceRoot(file);
   const language = context.languageRegistry.getById(file.languageId);
 
   if (!language) {
@@ -93,6 +94,7 @@ export async function collectIndexedFileSemantics(
 
   const symbols = extractSymbols({
     language,
+    workspaceRoot,
     absolutePath: file.path,
     relativePath: file.relativePath,
     source: parseResult.source,
@@ -100,6 +102,7 @@ export async function collectIndexedFileSemantics(
   });
   const definitions = extractDefinitionMatches({
     language,
+    workspaceRoot,
     absolutePath: file.path,
     relativePath: file.relativePath,
     source: parseResult.source,
@@ -113,6 +116,7 @@ export async function collectIndexedFileSemantics(
     referenceKind: capture.referenceKind,
     symbolKind: null,
     languageId: language.id,
+    workspaceRoot,
     filePath: file.path,
     relativePath: file.relativePath,
     range: createSourceRange(
@@ -235,8 +239,9 @@ function createIndexedRecord(
   options: CreateIndexedRecordOptions,
 ): PersistedIndexedFileRecord {
   const symbols = options.symbols ?? [];
+  const workspaceRoot = resolveIndexedRecordWorkspaceRoot(file);
   return PersistedIndexedFileRecordSchema.parse({
-    workspaceRoot: resolveIndexedRecordWorkspaceRoot(file),
+    workspaceRoot,
     path: file.path,
     relativePath: file.relativePath,
     languageId: file.languageId,

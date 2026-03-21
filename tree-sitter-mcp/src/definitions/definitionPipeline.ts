@@ -42,6 +42,7 @@ export async function collectFileDefinitions(
     file,
     definitions: extractDefinitionMatches({
       language,
+      workspaceRoot: file.workspaceRoot ?? context.workspace.root ?? file.path,
       absolutePath: file.path,
       relativePath: file.relativePath,
       source: parseResult.source,

@@ -6,6 +6,7 @@ export const DefinitionMatchSchema = z.object({
   name: z.string().min(1),
   kind: SymbolKindSchema,
   languageId: z.string().min(1),
+  workspaceRoot: z.string().min(1),
   filePath: z.string().min(1),
   relativePath: z.string().min(1),
   range: SourceRangeSchema,

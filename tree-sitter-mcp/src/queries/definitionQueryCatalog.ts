@@ -75,6 +75,7 @@ interface CaptureDefinitionsInput {
 
 interface ExtractDefinitionMatchesInput {
   language: RegisteredLanguage;
+  workspaceRoot: string;
   absolutePath: string;
   relativePath: string;
   source: string;
@@ -118,6 +119,7 @@ export function extractDefinitionMatches(input: ExtractDefinitionMatchesInput): 
     name: capture.nameNode.text,
     kind: capture.kind,
     languageId: input.language.id,
+    workspaceRoot: input.workspaceRoot,
     filePath: input.absolutePath,
     relativePath: input.relativePath,
     range: createSourceRange(

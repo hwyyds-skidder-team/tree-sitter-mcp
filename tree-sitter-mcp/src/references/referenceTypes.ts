@@ -10,6 +10,7 @@ export const ReferenceMatchSchema = z.object({
   referenceKind: ReferenceKindSchema,
   symbolKind: SymbolKindSchema.nullable(),
   languageId: z.string().min(1),
+  workspaceRoot: z.string().min(1),
   filePath: z.string().min(1),
   relativePath: z.string().min(1),
   range: SourceRangeSchema,
@@ -23,6 +24,7 @@ export const ReferenceMatchSchema = z.object({
 export const ReferenceSearchTargetSchema = z.object({
   name: z.string().min(1),
   languageId: z.string().optional(),
+  workspaceRoot: z.string().min(1).optional(),
   relativePath: z.string().optional(),
   kind: SymbolKindSchema.optional(),
 });

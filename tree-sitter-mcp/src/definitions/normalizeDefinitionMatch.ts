@@ -13,6 +13,7 @@ export function normalizeDefinitionMatch(match: SymbolMatch): DefinitionMatch {
   return DefinitionMatchSchema.parse({
     ...match,
     languageId: match.languageId.trim().toLowerCase(),
+    workspaceRoot: path.normalize(match.workspaceRoot),
     filePath: path.normalize(match.filePath),
     relativePath: normalizeRelativePath(match.relativePath),
     range,

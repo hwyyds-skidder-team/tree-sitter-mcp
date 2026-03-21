@@ -9,6 +9,7 @@ export const SymbolMatchSchema = z.object({
   name: z.string(),
   kind: SymbolKindSchema,
   languageId: z.string(),
+  workspaceRoot: z.string().min(1),
   filePath: z.string(),
   relativePath: z.string(),
   range: SourceRangeSchema,
@@ -31,6 +32,7 @@ export interface CompilableQueryDefinition {
 
 interface ExtractSymbolsInput {
   language: RegisteredLanguage;
+  workspaceRoot: string;
   absolutePath: string;
   relativePath: string;
   source: string;
@@ -116,6 +118,7 @@ export function extractSymbols(input: ExtractSymbolsInput): SymbolMatch[] {
       name: nameNode.text,
       kind: queryDefinition.classify(definitionNode, nameNode),
       languageId: input.language.id,
+      workspaceRoot: input.workspaceRoot,
       filePath: input.absolutePath,
       relativePath: input.relativePath,
       range: createSourceRange(

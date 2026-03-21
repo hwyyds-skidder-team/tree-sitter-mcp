@@ -161,6 +161,7 @@ export function registerListFileSymbolsTool(server: McpServer, context: ServerCo
 
       const symbols = extractSymbols({
         language,
+        workspaceRoot: context.workspace.root,
         absolutePath,
         relativePath,
         source: parseResult.source,

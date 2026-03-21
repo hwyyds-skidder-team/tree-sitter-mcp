@@ -248,6 +248,7 @@ function shapeReferenceMatch(
     referenceKind: reference.referenceKind,
     symbolKind,
     languageId: reference.languageId,
+    workspaceRoot: reference.workspaceRoot,
     filePath: reference.filePath,
     relativePath: reference.relativePath,
     range: reference.range,
