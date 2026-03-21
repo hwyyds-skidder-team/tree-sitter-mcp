@@ -3,6 +3,7 @@ import { z } from "zod";
 import { IndexModeSchema } from "../indexing/indexTypes.js";
 import { SupportedLanguageSchema } from "../languages/languageRegistry.js";
 import { listDefinitionQueryTypes } from "../queries/definitionQueryCatalog.js";
+import { listRelationshipQueryTypes } from "../queries/relationshipQueryCatalog.js";
 import { listReferenceQueryTypes } from "../queries/referenceQueryCatalog.js";
 import type { ServerContext } from "../server/serverContext.js";
 import { summarizeWorkspace, WorkspaceSummarySchema } from "../workspace/workspaceState.js";
@@ -26,6 +27,7 @@ const TOOL_NAMES = [
   "search_definitions",
   "resolve_definition",
   "search_references",
+  "get_relationship_view",
 ];
 
 export function registerGetCapabilitiesTool(server: McpServer, context: ServerContext): void {
@@ -47,6 +49,7 @@ export function registerGetCapabilitiesTool(server: McpServer, context: ServerCo
         ...context.queryTypes,
         ...listDefinitionQueryTypes(),
         ...listReferenceQueryTypes(),
+        ...listRelationshipQueryTypes(),
       ])];
       const payload = {
         parserMode: context.parserMode,
@@ -61,7 +64,7 @@ export function registerGetCapabilitiesTool(server: McpServer, context: ServerCo
         content: [
           {
             type: "text" as const,
-            text: `Parser mode ${payload.parserMode}; indexMode ${payload.indexMode}; ${payload.supportedLanguages.length} languages; ${payload.supportedQueryTypes.length} semantic query types including indexed definition and reference search.`,
+            text: `Parser mode ${payload.parserMode}; indexMode ${payload.indexMode}; ${payload.supportedLanguages.length} languages; ${payload.supportedQueryTypes.length} semantic query types including indexed definition, reference, and relationship search.`,
           },
         ],
         structuredContent: payload,

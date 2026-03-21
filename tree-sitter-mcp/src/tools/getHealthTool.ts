@@ -4,6 +4,7 @@ import { createDiagnostic, DiagnosticSchema } from "../diagnostics/diagnosticFac
 import { IndexModeSchema } from "../indexing/indexTypes.js";
 import { SupportedLanguageSchema } from "../languages/languageRegistry.js";
 import { listDefinitionQueryTypes } from "../queries/definitionQueryCatalog.js";
+import { listRelationshipQueryTypes } from "../queries/relationshipQueryCatalog.js";
 import { listReferenceQueryTypes } from "../queries/referenceQueryCatalog.js";
 import type { ServerContext } from "../server/serverContext.js";
 import { createFreshnessDiagnostics } from "./indexFreshness.js";
@@ -20,11 +21,25 @@ const HealthOutputSchema = z.object({
   indexMode: IndexModeSchema,
   supportedLanguages: z.array(SupportedLanguageSchema),
   supportedQueryTypes: z.array(z.string()),
+  toolNames: z.array(z.string()),
   workspace: WorkspaceSummarySchema,
   searchableFilesSample: z.array(SearchableFileRecordSchema),
   unsupportedFilesSample: z.array(UnsupportedFileRecordSchema),
   diagnostics: z.array(DiagnosticSchema),
 });
+
+const TOOL_NAMES = [
+  "tree_sitter_get_server_info",
+  "set_workspace",
+  "get_capabilities",
+  "get_health",
+  "list_file_symbols",
+  "search_workspace_symbols",
+  "search_definitions",
+  "resolve_definition",
+  "search_references",
+  "get_relationship_view",
+];
 
 export function registerGetHealthTool(server: McpServer, context: ServerContext): void {
   server.registerTool(
@@ -45,6 +60,7 @@ export function registerGetHealthTool(server: McpServer, context: ServerContext)
         ...context.queryTypes,
         ...listDefinitionQueryTypes(),
         ...listReferenceQueryTypes(),
+        ...listRelationshipQueryTypes(),
       ])];
       const diagnostics = context.workspace.root
         ? []
@@ -94,6 +110,7 @@ export function registerGetHealthTool(server: McpServer, context: ServerContext)
         indexMode: workspace.index.indexMode,
         supportedLanguages: context.languageRegistry.list(),
         supportedQueryTypes,
+        toolNames: [...TOOL_NAMES],
         workspace,
         searchableFilesSample: context.workspace.searchableFiles.slice(0, 20),
         unsupportedFilesSample: context.workspace.unsupportedFiles.slice(0, 20),
@@ -106,7 +123,7 @@ export function registerGetHealthTool(server: McpServer, context: ServerContext)
             type: "text" as const,
             text: payload.status === "ready"
               ? `Workspace ready at ${payload.workspace.root}; workspaceFingerprint ${payload.workspace.index.workspaceFingerprint}; ${payload.workspace.searchableFileCount} supported files discovered; persistent_disk indexing is active.`
-              : "Workspace not set; semantic queries, including definition and reference search, will return actionable diagnostics until set_workspace runs.",
+              : "Workspace not set; semantic queries, including definition, reference, and relationship search, will return actionable diagnostics until set_workspace runs.",
           },
         ],
         structuredContent: payload,
