@@ -7,7 +7,7 @@
 
 ## Current Status
 
-Phases 04 and 05 are complete and verified, and Phase 06-02 now ships indexed relationship traversal plus the read-only relationship MCP tool. The next milestone step is Phase 06-03 end-to-end validation against realistic multi-workspace repositories.
+Phases 04-06 are now implemented, and Phase 06-03 validates relationship discovery end-to-end across realistic single-root and federated repositories. The milestone is ready for verification and ship/audit workflow rather than more Phase 6 build-out.
 
 ## Overview
 
@@ -17,7 +17,7 @@ Phases 04 and 05 are complete and verified, and Phase 06-02 now ships indexed re
 
 - [x] **Phase 4: Persistent Indexing and Query Freshness** - Add reusable semantic state, invalidation, and explicit freshness diagnostics.
 - [x] **Phase 5: Multi-Workspace Search and Result Quality** - Expand search across workspace roots and improve narrowing/ranking for large result sets.
-- [ ] **Phase 6: Relationship Views and Impact Discovery** - Layer direct semantic relationships and impact-oriented retrieval on top of the stronger search foundation.
+- [x] **Phase 6: Relationship Views and Impact Discovery** - Layer direct semantic relationships and impact-oriented retrieval on top of the stronger search foundation.
 
 ## Phase Details
 
@@ -67,7 +67,7 @@ Plans:
 Plans:
 - [x] 06-01: Model relationship queries and schemas using existing definition/reference primitives.
 - [x] 06-02: Implement relationship traversal, filtering, pagination, and workspace-aware payload shaping.
-- [ ] 06-03: Validate relationship and impact workflows against realistic multi-workspace repositories.
+- [x] 06-03: Validate relationship and impact workflows against realistic multi-workspace repositories.
 
 ## Progress
 
@@ -78,7 +78,7 @@ Phases execute in numeric order: 4 → 5 → 6
 |-------|-----------|----------------|--------|-----------|
 | 4. Persistent Indexing and Query Freshness | v1.1 | 3/3 | Complete | 2026-03-21 |
 | 5. Multi-Workspace Search and Result Quality | v1.1 | 3/3 | Complete | 2026-03-21 |
-| 6. Relationship Views and Impact Discovery | v1.1 | 2/3 | In Progress | - |
+| 6. Relationship Views and Impact Discovery | v1.1 | 3/3 | Complete | 2026-03-21 |
 
 ---
 *For shipped milestone details, see `.planning/milestones/v1.0-ROADMAP.md`.*

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Search Depth and Scale
 current_plan: 3
-status: executing
-stopped_at: Completed 06-02-PLAN.md
-last_updated: "2026-03-21T15:20:52.003Z"
+status: ready_for_verification
+stopped_at: Completed 06-03-PLAN.md
+last_updated: "2026-03-21T15:48:29.858Z"
 last_activity: 2026-03-21
 progress:
   total_phases: 3
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 9
-  completed_plans: 8
+  completed_plans: 9
 ---
 
 # Project State
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-21)
 
 **Core Value:** An AI agent can quickly find the right code symbols, definitions, references, and related source regions in a workspace without relying on brittle grep-style text search.
-**Current Focus:** Phase 06 — relationship-views-and-impact-discovery
+**Current Focus:** v1.1 milestone verification after completing Phase 06
 
 ## Current Position
 
-Phase: 06 (relationship-views-and-impact-discovery) — EXECUTING
+Phase: 06 (relationship-views-and-impact-discovery) — COMPLETE
 Plan: 3 of 3
 Current Plan: 3
 Total Plans in Phase: 3
-Status: Ready to execute
+Status: Ready for verification
 Last Activity: 2026-03-21
 
 ## Decisions Made
@@ -60,13 +60,15 @@ Last Activity: 2026-03-21
 - [Phase 05]: Normalize `workspaceRoots` filtering centrally so definition and reference backends preserve the same path/language/kind narrowing behavior across multiple roots.
 - [Phase 05]: Apply one shared exact/prefix/contains ranking helper before truncation so federated symbol and definition searches stay deterministic across roots.
 - [Phase 05]: Expose additive `workspaceRoots` and `workspaceBreakdown` metadata on broad search tools while keeping single-workspace text compact for existing callers.
-- [Next]: Validate Phase 06-03 relationship and impact workflows against realistic multi-workspace repositories and the new read-only MCP tool surface.
 - [Phase 06]: Reuse DefinitionMatchSchema and ReferenceMatchSchema inside relationship edges so workspace attribution and evidence stay aligned with existing search payloads.
 - [Phase 06]: Constrain relationship maxDepth to 1..2 and default it to 1 so Phase 6 stays read-only and neighborhood-scoped.
 - [Phase 06]: Normalize relationshipKinds into canonical enum order so future traversal output remains deterministic regardless of caller input order.
 - [Phase 06]: Incoming relationship edges reuse indexed searchReferences evidence and resolve enclosing owners in-file before emitting related symbols.
 - [Phase 06]: Relationship traversal inspects fresh indexed references inside resolved definition ranges and breadth-first expands at most one additional hop with deterministic dedupe.
 - [Phase 06]: Health now mirrors capabilities by advertising relationship_view and get_relationship_view alongside workspace breakdown and freshness metadata patterns.
+- [Phase 06]: Exercise relationship discovery through the compiled stdio server with temp repositories so Phase 6 is proven end-to-end instead of only through backend helpers.
+- [Phase 06]: Prefer same-file and same-workspace definition resolution before global fallback when mapping outgoing relationship references so duplicate symbol names stay attributable across roots.
+- [Phase 06]: Capture fresh-index state before target resolution inside getRelationshipView so refreshed and degraded metadata survives multi-step relationship workflows.
 
 ## Pending Todos
 
@@ -88,9 +90,10 @@ None.
 | 05 | 03 | 3 hr 30 min | 3 | 13 | 2026-03-21 |
 | 06 | 01 | 9 min | 3 | 6 | 2026-03-21 |
 | 06 | 02 | 15 min | 3 | 8 | 2026-03-21 |
+| 06 | 03 | 21 min | 3 | 6 | 2026-03-21 |
 
 ## Session
 
-**Last Date:** 2026-03-21T15:20:51.926Z
-**Stopped At:** Completed 06-02-PLAN.md
-**Resume File:** .planning/phases/06-relationship-views-and-impact-discovery/06-03-PLAN.md
+**Last Date:** 2026-03-21T15:48:29.854Z
+**Stopped At:** Completed 06-03-PLAN.md
+**Resume File:** None
