@@ -72,6 +72,7 @@ test("definition tools search and resolve definitions over stdio without mutatin
   const workspaceRoot = await createWorkspaceFixture();
   const beforeFiles = await listWorkspaceFiles(workspaceRoot);
   const beforeSource = await fs.readFile(path.join(workspaceRoot, "src", "app.ts"), "utf8");
+  const indexRootDir = await fs.mkdtemp(path.join(os.tmpdir(), "tree-sitter-mcp-definition-tools-index-"));
   const client = new Client({
     name: "tree-sitter-mcp-definition-tools-test",
     version: "0.1.0",
@@ -80,7 +81,10 @@ test("definition tools search and resolve definitions over stdio without mutatin
     command: process.execPath,
     args: [serverEntry],
     cwd: packageRoot,
-    env: process.env as Record<string, string>,
+    env: {
+      ...(process.env as Record<string, string>),
+      TREE_SITTER_MCP_INDEX_DIR: indexRootDir,
+    },
   });
 
   try {
@@ -93,6 +97,16 @@ test("definition tools search and resolve definitions over stdio without mutatin
       },
     });
     assert.notEqual(setWorkspaceResult.isError, true);
+    const setWorkspacePayload = setWorkspaceResult.structuredContent as {
+      workspace: {
+        index: {
+          workspaceFingerprint: string | null;
+          lastBuiltAt: string | null;
+        };
+      };
+    };
+    assert.ok(setWorkspacePayload.workspace.index.workspaceFingerprint);
+    assert.ok(setWorkspacePayload.workspace.index.lastBuiltAt);
 
     const searchResult = await client.callTool({
       name: "search_definitions",
@@ -111,6 +125,11 @@ test("definition tools search and resolve definitions over stdio without mutatin
         selectionRange: { start: { offset: number }; end: { offset: number } };
       }>;
       diagnostics: Array<{ code: string; relativePath?: string }>;
+      freshness: {
+        state: string;
+        workspaceFingerprint: string | null;
+        degradedFiles: string[];
+      };
     };
     assert.deepEqual(searchPayload.filters, {
       language: null,
@@ -128,6 +147,13 @@ test("definition tools search and resolve definitions over stdio without mutatin
     assert.ok(searchPayload.results.every((definition) => definition.selectionRange.start.offset >= definition.range.start.offset));
     assert.ok(searchPayload.results.every((definition) => definition.selectionRange.end.offset <= definition.range.end.offset));
     assert.ok(searchPayload.diagnostics.some((diagnostic) => diagnostic.code === "parse_failed" && diagnostic.relativePath === "src/broken.ts"));
+    assert.ok(searchPayload.diagnostics.some((diagnostic) => diagnostic.code === "index_degraded"));
+    assert.equal(searchPayload.freshness.state, "degraded");
+    assert.deepEqual(searchPayload.freshness.degradedFiles, ["src/broken.ts"]);
+    assert.equal(
+      searchPayload.freshness.workspaceFingerprint,
+      setWorkspacePayload.workspace.index.workspaceFingerprint,
+    );
 
     const filteredSearchResult = await client.callTool({
       name: "search_definitions",

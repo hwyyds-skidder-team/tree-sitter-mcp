@@ -159,6 +159,7 @@ test("searchReferences returns a structured diagnostic when the target cannot be
 
 test("searchReferences refreshes the workspace snapshot and picks up newly added files", async () => {
   const workspaceRoot = await createReferenceWorkspaceFixture();
+  await fs.rm(path.join(workspaceRoot, "src", "broken.ts"));
   const context = await createPreparedContext(workspaceRoot);
 
   await fs.writeFile(path.join(workspaceRoot, "src", "late.ts"), [
@@ -184,7 +185,7 @@ test("searchReferences refreshes the workspace snapshot and picks up newly added
     "src/view.tsx:reference",
     "src/view.tsx:reference",
   ].sort());
-  assert.equal(result.searchedFiles, 4);
+  assert.equal(result.searchedFiles, 3);
   assert.equal(context.workspace.index.state, "refreshed");
 });
 

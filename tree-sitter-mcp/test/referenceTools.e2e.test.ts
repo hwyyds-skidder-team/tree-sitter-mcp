@@ -42,7 +42,6 @@ async function createWorkspaceFixture(): Promise<string> {
     "",
   ].join("\n"));
 
-  await fs.writeFile(path.join(workspaceRoot, "src", "broken.ts"), "export function broken( {\n");
   await fs.writeFile(path.join(workspaceRoot, "README.md"), "docs\n");
 
   return workspaceRoot;
@@ -70,28 +69,52 @@ test("reference tools chain definition discovery into reference search over stdi
   const workspaceRoot = await createWorkspaceFixture();
   const beforeFiles = await listWorkspaceFiles(workspaceRoot);
   const beforeSource = await fs.readFile(path.join(workspaceRoot, "src", "app.ts"), "utf8");
-  const client = new Client({
-    name: "tree-sitter-mcp-reference-tools-test",
-    version: "0.1.0",
-  });
-  const transport = new StdioClientTransport({
-    command: process.execPath,
-    args: [serverEntry],
-    cwd: packageRoot,
-    env: process.env as Record<string, string>,
-  });
+  const indexRootDir = await fs.mkdtemp(path.join(os.tmpdir(), "tree-sitter-mcp-reference-tools-index-"));
 
+  const createClientSession = () => {
+    const client = new Client({
+      name: "tree-sitter-mcp-reference-tools-test",
+      version: "0.1.0",
+    });
+    const transport = new StdioClientTransport({
+      command: process.execPath,
+      args: [serverEntry],
+      cwd: packageRoot,
+      env: {
+        ...(process.env as Record<string, string>),
+        TREE_SITTER_MCP_INDEX_DIR: indexRootDir,
+      },
+    });
+
+    return { client, transport };
+  };
+
+  let firstWorkspaceFingerprint: string | null = null;
+  let firstLastBuiltAt: string | null = null;
   try {
-    await client.connect(transport);
+    const firstSession = createClientSession();
+    await firstSession.client.connect(firstSession.transport);
 
-    await client.callTool({
+    const firstSetWorkspace = await firstSession.client.callTool({
       name: "set_workspace",
       arguments: {
         root: workspaceRoot,
       },
     });
+    const firstSetWorkspacePayload = firstSetWorkspace.structuredContent as {
+      workspace: {
+        index: {
+          workspaceFingerprint: string | null;
+          lastBuiltAt: string | null;
+        };
+      };
+    };
+    firstWorkspaceFingerprint = firstSetWorkspacePayload.workspace.index.workspaceFingerprint;
+    firstLastBuiltAt = firstSetWorkspacePayload.workspace.index.lastBuiltAt;
+    assert.ok(firstWorkspaceFingerprint);
+    assert.ok(firstLastBuiltAt);
 
-    const definitionResult = await client.callTool({
+    const definitionResult = await firstSession.client.callTool({
       name: "search_definitions",
       arguments: {
         query: "greetUser",
@@ -103,10 +126,12 @@ test("reference tools chain definition discovery into reference search over stdi
 
     const definitionPayload = definitionResult.structuredContent as {
       results: Array<{ name: string; languageId: string; relativePath: string; kind: string }>;
+      freshness: { state: string };
     };
     assert.equal(definitionPayload.results.length, 1);
+    assert.equal(definitionPayload.freshness.state, "fresh");
 
-    const firstPage = await client.callTool({
+    const firstPage = await firstSession.client.callTool({
       name: "search_references",
       arguments: {
         symbol: definitionPayload.results[0],
@@ -124,10 +149,13 @@ test("reference tools chain definition discovery into reference search over stdi
         enclosingContext: { kind: string; name: string | null } | null;
         contextSnippet: { text: string; truncated: boolean } | null;
       }>;
+      freshness: { state: string; workspaceFingerprint: string | null };
       diagnostics: Array<{ code: string; relativePath?: string }>;
     };
     assert.equal(firstPagePayload.target?.name, "greetUser");
     assert.equal(firstPagePayload.target?.relativePath, "src/app.ts");
+    assert.equal(firstPagePayload.freshness.state, "fresh");
+    assert.equal(firstPagePayload.freshness.workspaceFingerprint, firstWorkspaceFingerprint);
     assert.deepEqual(firstPagePayload.pagination, {
       limit: 2,
       offset: 0,
@@ -138,9 +166,9 @@ test("reference tools chain definition discovery into reference search over stdi
     });
     assert.ok(firstPagePayload.results.every((reference) => reference.contextSnippet?.text.includes("greetUser")));
     assert.ok(firstPagePayload.results.some((reference) => reference.enclosingContext?.name === "sayHello"));
-    assert.ok(firstPagePayload.diagnostics.some((diagnostic) => diagnostic.code === "parse_failed" && diagnostic.relativePath === "src/broken.ts"));
+    assert.equal(firstPagePayload.diagnostics.length, 0);
 
-    const secondPage = await client.callTool({
+    const secondPage = await firstSession.client.callTool({
       name: "search_references",
       arguments: {
         lookup: {
@@ -156,11 +184,13 @@ test("reference tools chain definition discovery into reference search over stdi
     const secondPagePayload = secondPage.structuredContent as {
       pagination: { offset: number; returned: number; hasMore: boolean; nextOffset: number | null };
       results: Array<{ relativePath: string }>;
+      freshness: { state: string };
     };
     assert.equal(secondPagePayload.pagination.offset, 2);
     assert.equal(secondPagePayload.results.length, 2);
+    assert.equal(secondPagePayload.freshness.state, "fresh");
 
-    const methodLookup = await client.callTool({
+    const methodLookup = await firstSession.client.callTool({
       name: "search_references",
       arguments: {
         lookup: {
@@ -179,7 +209,7 @@ test("reference tools chain definition discovery into reference search over stdi
       "src/app.ts:call:sayHello",
     ]);
 
-    const noUsageResult = await client.callTool({
+    const noUsageResult = await firstSession.client.callTool({
       name: "search_references",
       arguments: {
         lookup: {
@@ -195,7 +225,7 @@ test("reference tools chain definition discovery into reference search over stdi
     };
     assert.equal(noUsagePayload.diagnostic?.code, "reference_not_found");
 
-    const missingTargetResult = await client.callTool({
+    const missingTargetResult = await firstSession.client.callTool({
       name: "search_references",
       arguments: {
         lookup: {
@@ -209,12 +239,64 @@ test("reference tools chain definition discovery into reference search over stdi
     };
     assert.equal(missingTargetPayload.diagnostic?.code, "definition_not_found");
 
+    await fs.writeFile(path.join(workspaceRoot, "src", "view.tsx"), "export function Panel( {\n");
+
+    const degradedResult = await firstSession.client.callTool({
+      name: "search_references",
+      arguments: {
+        lookup: {
+          name: "greetUser",
+          languageId: "typescript",
+          kind: "function",
+        },
+      },
+    });
+    assert.notEqual(degradedResult.isError, true);
+    const degradedPayload = degradedResult.structuredContent as {
+      results: Array<{ relativePath: string; referenceKind: string }>;
+      freshness: { state: string; degradedFiles: string[] };
+      diagnostics: Array<{ code: string; relativePath?: string }>;
+    };
+    assert.ok(degradedPayload.freshness.state === "degraded");
+    assert.deepEqual(degradedPayload.freshness.degradedFiles, ["src/view.tsx"]);
+    assert.ok(degradedPayload.diagnostics.some((diagnostic) => diagnostic.code === "index_degraded"));
+    assert.ok(degradedPayload.diagnostics.some((diagnostic) =>
+      diagnostic.code === "parse_failed" && diagnostic.relativePath === "src/view.tsx"));
+    assert.deepEqual(degradedPayload.results.map((reference) => `${reference.relativePath}:${reference.referenceKind}`), [
+      "src/app.ts:call",
+    ]);
+
+    await firstSession.client.close().catch(() => undefined);
+    await firstSession.transport.close().catch(() => undefined);
+
+    const secondSession = createClientSession();
+    await secondSession.client.connect(secondSession.transport);
+
+    const secondSetWorkspace = await secondSession.client.callTool({
+      name: "set_workspace",
+      arguments: {
+        root: workspaceRoot,
+      },
+    });
+    const secondSetWorkspacePayload = secondSetWorkspace.structuredContent as {
+      workspace: {
+        index: {
+          workspaceFingerprint: string | null;
+          lastBuiltAt: string | null;
+        };
+      };
+    };
+    assert.equal(secondSetWorkspacePayload.workspace.index.workspaceFingerprint, firstWorkspaceFingerprint);
+    assert.equal(secondSetWorkspacePayload.workspace.index.lastBuiltAt, firstLastBuiltAt);
+
+    await secondSession.client.close().catch(() => undefined);
+    await secondSession.transport.close().catch(() => undefined);
+
     const afterFiles = await listWorkspaceFiles(workspaceRoot);
     const afterSource = await fs.readFile(path.join(workspaceRoot, "src", "app.ts"), "utf8");
     assert.deepEqual(afterFiles, beforeFiles);
     assert.equal(afterSource, beforeSource);
   } finally {
-    await client.close().catch(() => undefined);
-    await transport.close().catch(() => undefined);
+    // Sessions are closed inline so restart assertions can run in sequence.
   }
 });

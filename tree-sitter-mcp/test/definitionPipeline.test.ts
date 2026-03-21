@@ -141,6 +141,7 @@ test("searchDefinitions finds definitions on demand and reports parse diagnostic
 
 test("searchDefinitions refreshes the workspace snapshot and picks up newly added files", async () => {
   const workspaceRoot = await createDefinitionWorkspaceFixture();
+  await fs.rm(path.join(workspaceRoot, "src", "broken.ts"));
   const context = await createPreparedContext(workspaceRoot);
 
   await fs.writeFile(path.join(workspaceRoot, "src", "late.ts"), "export function lateDefinition() { return 1; }\n");

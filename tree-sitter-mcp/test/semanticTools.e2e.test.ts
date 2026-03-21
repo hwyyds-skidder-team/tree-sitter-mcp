@@ -12,7 +12,7 @@ const __dirname = path.dirname(__filename);
 const packageRoot = path.resolve(__dirname, "..");
 const serverEntry = path.join(packageRoot, "dist", "index.js");
 
-async function createWorkspaceFixture(): Promise<string> {
+async function createWorkspaceFixture(options: { includeBroken?: boolean } = {}): Promise<string> {
   const workspaceRoot = await fs.mkdtemp(path.join(os.tmpdir(), "tree-sitter-mcp-semantic-"));
   await fs.mkdir(path.join(workspaceRoot, "src"), { recursive: true });
   await fs.mkdir(path.join(workspaceRoot, "scripts"), { recursive: true });
@@ -38,7 +38,9 @@ async function createWorkspaceFixture(): Promise<string> {
     "",
   ].join("\n"));
 
-  await fs.writeFile(path.join(workspaceRoot, "src", "broken.ts"), "export function broken( {\n");
+  if (options.includeBroken ?? true) {
+    await fs.writeFile(path.join(workspaceRoot, "src", "broken.ts"), "export function broken( {\n");
+  }
   await fs.writeFile(path.join(workspaceRoot, "README.md"), "docs\n");
   await fs.writeFile(path.join(workspaceRoot, "node_modules", "pkg", "ignored.ts"), "export const ignored = true;\n");
   return workspaceRoot;
@@ -122,6 +124,7 @@ test("semantic tools search supported files, respect exclusions, and return acti
     const searchPayload = searchWorkspaceSymbolsResult.structuredContent as {
       results: Array<{ name: string; relativePath: string }>;
       diagnostics: Array<{ code: string; relativePath?: string }>;
+      freshness: { state: string; degradedFiles: string[]; workspaceFingerprint: string | null };
     };
     assert.deepEqual(searchPayload.results.map((symbol) => `${symbol.relativePath}:${symbol.name}`).sort(), [
       "scripts/tool.py:greet_python",
@@ -129,6 +132,13 @@ test("semantic tools search supported files, respect exclusions, and return acti
       "src/app.ts:greet",
     ].sort());
     assert.ok(searchPayload.diagnostics.some((diagnostic) => diagnostic.code === "parse_failed" && diagnostic.relativePath === "src/broken.ts"));
+    assert.ok(searchPayload.diagnostics.some((diagnostic) => diagnostic.code === "index_degraded"));
+    assert.equal(searchPayload.freshness.state, "degraded");
+    assert.deepEqual(searchPayload.freshness.degradedFiles, ["src/broken.ts"]);
+    assert.equal(
+      searchPayload.freshness.workspaceFingerprint,
+      setWorkspacePayload.workspace.index.workspaceFingerprint,
+    );
     assert.ok(searchPayload.diagnostics.every((diagnostic) => diagnostic.relativePath !== "node_modules/pkg/ignored.ts"));
 
     const pythonOnlyResult = await client.callTool({
@@ -168,6 +178,74 @@ test("semantic tools search supported files, respect exclusions, and return acti
       diagnostics: Array<{ code: string }>;
     };
     assert.equal(parseFailurePayload.diagnostics[0]?.code, "parse_failed");
+  } finally {
+    await client.close().catch(() => undefined);
+    await transport.close().catch(() => undefined);
+  }
+});
+
+test("semantic tools report freshness.state === \"refreshed\" after a supported file changes", async () => {
+  const workspaceRoot = await createWorkspaceFixture({ includeBroken: false });
+  const indexRootDir = await fs.mkdtemp(path.join(os.tmpdir(), "tree-sitter-mcp-semantic-index-"));
+  const client = new Client({
+    name: "tree-sitter-mcp-semantic-refresh-test",
+    version: "0.1.0",
+  });
+  const transport = new StdioClientTransport({
+    command: process.execPath,
+    args: [serverEntry],
+    cwd: packageRoot,
+    env: {
+      ...(process.env as Record<string, string>),
+      TREE_SITTER_MCP_INDEX_DIR: indexRootDir,
+    },
+  });
+
+  try {
+    await client.connect(transport);
+
+    await client.callTool({
+      name: "set_workspace",
+      arguments: {
+        root: workspaceRoot,
+      },
+    });
+
+    await client.callTool({
+      name: "search_workspace_symbols",
+      arguments: {
+        query: "greet",
+      },
+    });
+
+    await fs.writeFile(path.join(workspaceRoot, "src", "app.ts"), [
+      "export interface Person { name: string }",
+      "export function refreshedGreet(name: string): string { return name; }",
+      "class Greeter {",
+      "  sayHello(): string { return 'hi'; }",
+      "}",
+      "const helper = (): number => 1;",
+      "",
+    ].join("\n"));
+
+    const refreshedSearch = await client.callTool({
+      name: "search_workspace_symbols",
+      arguments: {
+        query: "refreshed",
+      },
+    });
+    const refreshedPayload = refreshedSearch.structuredContent as {
+      results: Array<{ relativePath: string; name: string }>;
+      freshness: { state: string; refreshedFiles: string[] };
+      diagnostics: Array<{ code: string }>;
+    };
+
+    assert.deepEqual(refreshedPayload.results.map((symbol) => `${symbol.relativePath}:${symbol.name}`), [
+      "src/app.ts:refreshedGreet",
+    ]);
+    assert.ok(refreshedPayload.freshness.state === "refreshed");
+    assert.deepEqual(refreshedPayload.freshness.refreshedFiles, ["src/app.ts"]);
+    assert.ok(refreshedPayload.diagnostics.every((diagnostic) => diagnostic.code !== "index_degraded"));
   } finally {
     await client.close().catch(() => undefined);
     await transport.close().catch(() => undefined);
