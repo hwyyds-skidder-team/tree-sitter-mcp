@@ -1,22 +1,23 @@
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { z } from "zod";
 import { createContextSnippet } from "../context/contextSnippet.js";
 import { extractEnclosingContext } from "../context/extractEnclosingContext.js";
 import {
   createDiagnostic,
   createSourceRange,
-  DiagnosticSchema,
   type Diagnostic,
 } from "../diagnostics/diagnosticFactory.js";
-import { DefinitionMatchSchema, type DefinitionMatch } from "../definitions/definitionTypes.js";
+import type { DefinitionMatch } from "../definitions/definitionTypes.js";
+import {
+  IndexedFileSemanticRecordSchema,
+  type IndexedFileSemanticRecord,
+} from "./indexTypes.js";
 import { parseWithDiagnostics } from "../parsing/parseWithDiagnostics.js";
 import { extractDefinitionMatches } from "../queries/definitionQueryCatalog.js";
 import {
   createSnippet,
   extractSymbols,
-  SymbolMatchSchema,
   type SymbolMatch,
 } from "../queries/queryCatalog.js";
 import { captureReferenceNodes } from "../queries/referenceQueryCatalog.js";
@@ -24,26 +25,11 @@ import { ReferenceMatchSchema, type ReferenceMatch } from "../references/referen
 import type { ServerContext } from "../server/serverContext.js";
 import type { SearchableFileRecord } from "../workspace/workspaceState.js";
 
-export const PersistedIndexedFileRecordSchema = z.object({
-  workspaceRoot: z.string().min(1),
-  path: z.string(),
-  relativePath: z.string(),
-  languageId: z.string(),
-  grammarName: z.string(),
-  contentHash: z.string(),
-  symbolCount: z.number().int().nonnegative(),
-  updatedAt: z.string(),
-  mtimeMs: z.number().nonnegative(),
-  sizeBytes: z.number().int().nonnegative(),
-  symbols: z.array(SymbolMatchSchema),
-  definitions: z.array(DefinitionMatchSchema),
-  references: z.array(ReferenceMatchSchema),
-  diagnostics: z.array(DiagnosticSchema),
-});
+export const PersistedIndexedFileRecordSchema = IndexedFileSemanticRecordSchema;
 
-export const PersistedIndexedFileRecordsSchema = z.array(PersistedIndexedFileRecordSchema);
+export const PersistedIndexedFileRecordsSchema = IndexedFileSemanticRecordSchema.array();
 
-export type PersistedIndexedFileRecord = z.infer<typeof PersistedIndexedFileRecordSchema>;
+export type PersistedIndexedFileRecord = IndexedFileSemanticRecord;
 export interface IndexedFileSnapshot {
   contentHash: string;
   mtimeMs: number;

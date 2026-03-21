@@ -713,15 +713,7 @@ function normalizePersistedRecord(
 }
 
 function projectLegacyRecord(record: PersistedIndexedFileRecord): IndexedFileSemanticRecord {
-  return {
-    path: record.path,
-    relativePath: record.relativePath,
-    languageId: record.languageId,
-    grammarName: record.grammarName,
-    contentHash: record.contentHash,
-    symbolCount: record.symbolCount,
-    updatedAt: record.updatedAt,
-  };
+  return { ...record };
 }
 
 function collectDiagnostics(records: readonly PersistedIndexedFileRecord[]): Diagnostic[] {

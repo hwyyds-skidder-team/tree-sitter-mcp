@@ -24,6 +24,12 @@ function createRecord(
     contentHash: "sha1-index",
     symbolCount: 1,
     updatedAt: "2026-03-21T00:00:00.000Z",
+    mtimeMs: 123,
+    sizeBytes: 456,
+    symbols: [],
+    definitions: [],
+    references: [],
+    diagnostics: [],
   };
 }
 

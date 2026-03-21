@@ -1,9 +1,14 @@
 import { z } from "zod";
+import { DiagnosticSchema } from "../diagnostics/diagnosticFactory.js";
+import { DefinitionMatchSchema } from "../definitions/definitionTypes.js";
+import { SymbolMatchSchema } from "../queries/queryCatalog.js";
+import { ReferenceMatchSchema } from "../references/referenceTypes.js";
 
 export const IndexModeSchema = z.literal("persistent_disk");
 export const FreshnessStateSchema = z.enum(["fresh", "refreshed", "rebuilding", "degraded"]);
 
 export const IndexedFileSemanticRecordSchema = z.object({
+  workspaceRoot: z.string().min(1),
   path: z.string(),
   relativePath: z.string(),
   languageId: z.string(),
@@ -11,6 +16,12 @@ export const IndexedFileSemanticRecordSchema = z.object({
   contentHash: z.string(),
   symbolCount: z.number().int().nonnegative(),
   updatedAt: z.string(),
+  mtimeMs: z.number().nonnegative(),
+  sizeBytes: z.number().int().nonnegative(),
+  symbols: z.array(SymbolMatchSchema),
+  definitions: z.array(DefinitionMatchSchema),
+  references: z.array(ReferenceMatchSchema),
+  diagnostics: z.array(DiagnosticSchema),
 });
 
 export const WorkspaceIndexManifestSchema = z.object({
