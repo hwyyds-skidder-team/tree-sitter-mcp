@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
+import path from "node:path";
 import { z } from "zod";
 import { createContextSnippet } from "../context/contextSnippet.js";
 import { extractEnclosingContext } from "../context/extractEnclosingContext.js";
@@ -24,6 +25,7 @@ import type { ServerContext } from "../server/serverContext.js";
 import type { SearchableFileRecord } from "../workspace/workspaceState.js";
 
 export const PersistedIndexedFileRecordSchema = z.object({
+  workspaceRoot: z.string().optional(),
   path: z.string(),
   relativePath: z.string(),
   languageId: z.string(),
@@ -47,6 +49,12 @@ export interface IndexedFileSnapshot {
   mtimeMs: number;
   sizeBytes: number;
   updatedAt: string;
+}
+
+export interface WorkspaceOwnedPath {
+  path: string;
+  relativePath: string;
+  workspaceRoot?: string;
 }
 
 export async function collectIndexedFileSemantics(
@@ -181,6 +189,46 @@ export async function readIndexedFileSnapshot(file: SearchableFileRecord): Promi
   }
 }
 
+export function resolveIndexedRecordWorkspaceRoot(file: WorkspaceOwnedPath): string {
+  if (file.workspaceRoot && file.workspaceRoot.trim().length > 0) {
+    return file.workspaceRoot;
+  }
+
+  const segments = file.relativePath
+    .trim()
+    .replace(/\\/g, "/")
+    .split("/")
+    .filter((segment) => segment.length > 0);
+  const upwardSegments = Math.max(segments.length - 1, 0);
+
+  return path.resolve(path.dirname(file.path), ...Array(upwardSegments).fill(".."));
+}
+
+export function createWorkspaceRecordKey(file: WorkspaceOwnedPath): string {
+  return JSON.stringify([resolveIndexedRecordWorkspaceRoot(file), file.relativePath]);
+}
+
+export function parseWorkspaceRecordKey(key: string): {
+  workspaceRoot: string;
+  relativePath: string;
+} {
+  const parsed = JSON.parse(key) as unknown;
+
+  if (
+    Array.isArray(parsed)
+    && parsed.length === 2
+    && typeof parsed[0] === "string"
+    && typeof parsed[1] === "string"
+  ) {
+    return {
+      workspaceRoot: parsed[0],
+      relativePath: parsed[1],
+    };
+  }
+
+  throw new Error(`Invalid workspace record key: ${key}`);
+}
+
 function createIndexedRecord(
   file: SearchableFileRecord,
   snapshot: IndexedFileSnapshot,
@@ -188,6 +236,7 @@ function createIndexedRecord(
 ): PersistedIndexedFileRecord {
   const symbols = options.symbols ?? [];
   return PersistedIndexedFileRecordSchema.parse({
+    workspaceRoot: resolveIndexedRecordWorkspaceRoot(file),
     path: file.path,
     relativePath: file.relativePath,
     languageId: file.languageId,
