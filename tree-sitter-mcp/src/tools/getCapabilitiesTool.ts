@@ -1,23 +1,19 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { IndexModeSchema } from "../indexing/indexTypes.js";
 import { SupportedLanguageSchema } from "../languages/languageRegistry.js";
 import { listDefinitionQueryTypes } from "../queries/definitionQueryCatalog.js";
 import { listReferenceQueryTypes } from "../queries/referenceQueryCatalog.js";
 import type { ServerContext } from "../server/serverContext.js";
-import { summarizeWorkspace } from "../workspace/workspaceState.js";
+import { summarizeWorkspace, WorkspaceSummarySchema } from "../workspace/workspaceState.js";
 
 const CapabilitiesOutputSchema = z.object({
   parserMode: z.literal("on_demand"),
+  indexMode: IndexModeSchema,
   supportedLanguages: z.array(SupportedLanguageSchema),
   supportedQueryTypes: z.array(z.string()),
   toolNames: z.array(z.string()),
-  workspace: z.object({
-    root: z.string().nullable(),
-    exclusions: z.array(z.string()),
-    searchableFileCount: z.number().int().nonnegative(),
-    unsupportedFileCount: z.number().int().nonnegative(),
-    lastUpdatedAt: z.string().nullable(),
-  }),
+  workspace: WorkspaceSummarySchema,
 });
 
 const TOOL_NAMES = [
@@ -54,6 +50,7 @@ export function registerGetCapabilitiesTool(server: McpServer, context: ServerCo
       ])];
       const payload = {
         parserMode: context.parserMode,
+        indexMode: context.workspace.index.indexMode,
         supportedLanguages: context.languageRegistry.list(),
         supportedQueryTypes,
         toolNames: [...TOOL_NAMES],
@@ -64,7 +61,7 @@ export function registerGetCapabilitiesTool(server: McpServer, context: ServerCo
         content: [
           {
             type: "text" as const,
-            text: `Parser mode ${payload.parserMode}; ${payload.supportedLanguages.length} languages; ${payload.supportedQueryTypes.length} semantic query types including definition and reference search.`,
+            text: `Parser mode ${payload.parserMode}; indexMode ${payload.indexMode}; ${payload.supportedLanguages.length} languages; ${payload.supportedQueryTypes.length} semantic query types including indexed definition and reference search.`,
           },
         ],
         structuredContent: payload,

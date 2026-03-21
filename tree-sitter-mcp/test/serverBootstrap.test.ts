@@ -48,11 +48,21 @@ test("compiled server bootstraps over stdio and lists tools", async () => {
       name: "tree_sitter_get_server_info",
       arguments: {},
     });
+    const payload = callResult.structuredContent as {
+      eagerIndexing: boolean;
+      parserMode: string;
+      index: { indexMode: string; workspaceFingerprint: string | null };
+    };
+    assert.equal(payload.eagerIndexing, true);
+    assert.equal(payload.parserMode, "on_demand");
+    assert.equal(payload.index.indexMode, "persistent_disk");
+    assert.equal(payload.index.workspaceFingerprint, null);
 
     const textBlock = callResult.content.find((item) => item.type === "text");
     assert.ok(textBlock && "text" in textBlock);
     assert.match(textBlock.text, /stdio/);
     assert.match(textBlock.text, /on_demand/);
+    assert.match(textBlock.text, /eagerIndexing/);
   } finally {
     await client.close().catch(() => undefined);
     await transport.close().catch(() => undefined);

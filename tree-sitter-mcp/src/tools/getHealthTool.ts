@@ -1,28 +1,26 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { createDiagnostic, DiagnosticSchema } from "../diagnostics/diagnosticFactory.js";
+import { IndexModeSchema } from "../indexing/indexTypes.js";
 import { SupportedLanguageSchema } from "../languages/languageRegistry.js";
 import { listDefinitionQueryTypes } from "../queries/definitionQueryCatalog.js";
 import { listReferenceQueryTypes } from "../queries/referenceQueryCatalog.js";
 import type { ServerContext } from "../server/serverContext.js";
+import { createFreshnessDiagnostics } from "./indexFreshness.js";
 import {
   SearchableFileRecordSchema,
   summarizeWorkspace,
   UnsupportedFileRecordSchema,
+  WorkspaceSummarySchema,
 } from "../workspace/workspaceState.js";
 
 const HealthOutputSchema = z.object({
   status: z.enum(["workspace_not_set", "ready"]),
   parserMode: z.literal("on_demand"),
+  indexMode: IndexModeSchema,
   supportedLanguages: z.array(SupportedLanguageSchema),
   supportedQueryTypes: z.array(z.string()),
-  workspace: z.object({
-    root: z.string().nullable(),
-    exclusions: z.array(z.string()),
-    searchableFileCount: z.number().int().nonnegative(),
-    unsupportedFileCount: z.number().int().nonnegative(),
-    lastUpdatedAt: z.string().nullable(),
-  }),
+  workspace: WorkspaceSummarySchema,
   searchableFilesSample: z.array(SearchableFileRecordSchema),
   unsupportedFilesSample: z.array(UnsupportedFileRecordSchema),
   diagnostics: z.array(DiagnosticSchema),
@@ -59,13 +57,44 @@ export function registerGetHealthTool(server: McpServer, context: ServerContext)
               severity: "info",
             }),
           ];
+      const workspace = summarizeWorkspace(context.workspace);
+      const workspaceFingerprint = workspace.index.workspaceFingerprint;
+
+      if (workspace.index.state === "degraded") {
+        diagnostics.push(...createFreshnessDiagnostics({
+          state: "degraded",
+          checkedAt: workspace.index.lastRefreshedAt ?? workspace.index.lastBuiltAt ?? new Date().toISOString(),
+          refreshedFiles: [],
+          degradedFiles: workspace.index.degradedFileCount > 0 && workspaceFingerprint
+            ? [workspaceFingerprint]
+            : new Array(workspace.index.degradedFileCount).fill("degraded"),
+          workspaceFingerprint,
+        }));
+      }
+
+      const lastLoadResult = context.semanticIndex.getLastLoadResult();
+      if (lastLoadResult?.status === "schema_mismatch") {
+        diagnostics.push(createDiagnostic({
+          code: "index_schema_mismatch",
+          severity: "warning",
+          message: "A persisted index schema mismatch was detected and rebuilt.",
+          reason: `The on-disk index schema ${lastLoadResult.actualSchemaVersion} did not match expected schema ${lastLoadResult.expectedSchemaVersion}.`,
+          nextStep: "Reuse the rebuilt index or rerun set_workspace if you need to confirm the new snapshot.",
+          details: {
+            workspaceFingerprint,
+            expectedSchemaVersion: lastLoadResult.expectedSchemaVersion,
+            actualSchemaVersion: lastLoadResult.actualSchemaVersion,
+          },
+        }));
+      }
 
       const payload = {
         status: context.workspace.root ? ("ready" as const) : ("workspace_not_set" as const),
         parserMode: context.parserMode,
+        indexMode: workspace.index.indexMode,
         supportedLanguages: context.languageRegistry.list(),
         supportedQueryTypes,
-        workspace: summarizeWorkspace(context.workspace),
+        workspace,
         searchableFilesSample: context.workspace.searchableFiles.slice(0, 20),
         unsupportedFilesSample: context.workspace.unsupportedFiles.slice(0, 20),
         diagnostics,
@@ -76,7 +105,7 @@ export function registerGetHealthTool(server: McpServer, context: ServerContext)
           {
             type: "text" as const,
             text: payload.status === "ready"
-              ? `Workspace ready at ${payload.workspace.root}; ${payload.workspace.searchableFileCount} supported files discovered; definition and reference search remain on-demand and read-only.`
+              ? `Workspace ready at ${payload.workspace.root}; workspaceFingerprint ${payload.workspace.index.workspaceFingerprint}; ${payload.workspace.searchableFileCount} supported files discovered; persistent_disk indexing is active.`
               : "Workspace not set; semantic queries, including definition and reference search, will return actionable diagnostics until set_workspace runs.",
           },
         ],

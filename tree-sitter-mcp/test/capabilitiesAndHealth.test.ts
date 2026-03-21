@@ -24,6 +24,7 @@ async function createWorkspaceFixture(): Promise<string> {
 
 test("capabilities and health expose parser mode, languages, workspace root, and exclusion constraints", async () => {
   const workspaceRoot = await createWorkspaceFixture();
+  const indexRootDir = await fs.mkdtemp(path.join(os.tmpdir(), "tree-sitter-mcp-capabilities-index-"));
   const client = new Client({
     name: "tree-sitter-mcp-capabilities-test",
     version: "0.1.0",
@@ -32,7 +33,10 @@ test("capabilities and health expose parser mode, languages, workspace root, and
     command: process.execPath,
     args: [serverEntry],
     cwd: packageRoot,
-    env: process.env as Record<string, string>,
+    env: {
+      ...(process.env as Record<string, string>),
+      TREE_SITTER_MCP_INDEX_DIR: indexRootDir,
+    },
   });
 
   try {
@@ -44,12 +48,14 @@ test("capabilities and health expose parser mode, languages, workspace root, and
     });
     const capabilities = capabilitiesResult.structuredContent as {
       parserMode: string;
+      indexMode: string;
       supportedLanguages: Array<{ id: string }>;
       supportedQueryTypes: string[];
       toolNames: string[];
-      workspace: { root: string | null };
+      workspace: { root: string | null; index: { indexMode: string; workspaceFingerprint: string | null } };
     };
     assert.equal(capabilities.parserMode, "on_demand");
+    assert.equal(capabilities.indexMode, "persistent_disk");
     assert.deepEqual(capabilities.supportedLanguages.map((language) => language.id), [
       "javascript",
       "python",
@@ -68,6 +74,20 @@ test("capabilities and health expose parser mode, languages, workspace root, and
     assert.ok(capabilities.toolNames.includes("resolve_definition"));
     assert.ok(capabilities.toolNames.includes("search_references"));
     assert.equal(capabilities.workspace.root, null);
+    assert.equal(capabilities.workspace.index.indexMode, "persistent_disk");
+    assert.equal(capabilities.workspace.index.workspaceFingerprint, null);
+
+    const bootstrapResult = await client.callTool({
+      name: "tree_sitter_get_server_info",
+      arguments: {},
+    });
+    const bootstrap = bootstrapResult.structuredContent as {
+      eagerIndexing: boolean;
+      index: { indexMode: string; workspaceFingerprint: string | null };
+    };
+    assert.equal(bootstrap.eagerIndexing, true);
+    assert.equal(bootstrap.index.indexMode, "persistent_disk");
+    assert.equal(bootstrap.index.workspaceFingerprint, null);
 
     const initialHealthResult = await client.callTool({
       name: "get_health",
@@ -75,10 +95,12 @@ test("capabilities and health expose parser mode, languages, workspace root, and
     });
     const initialHealth = initialHealthResult.structuredContent as {
       status: string;
+      indexMode: string;
       supportedQueryTypes: string[];
       diagnostics: Array<{ code: string }>;
     };
     assert.equal(initialHealth.status, "workspace_not_set");
+    assert.equal(initialHealth.indexMode, "persistent_disk");
     assert.deepEqual(initialHealth.supportedQueryTypes, [
       "file_symbols",
       "workspace_symbols",
@@ -97,12 +119,27 @@ test("capabilities and health expose parser mode, languages, workspace root, and
       },
     });
     const workspacePayload = setWorkspaceResult.structuredContent as {
-      workspace: { root: string | null; searchableFileCount: number; unsupportedFileCount: number; exclusions: string[] };
+      workspace: {
+        root: string | null;
+        searchableFileCount: number;
+        unsupportedFileCount: number;
+        exclusions: string[];
+        index: {
+          indexMode: string;
+          workspaceFingerprint: string | null;
+          state: string;
+          lastBuiltAt: string | null;
+        };
+      };
     };
     assert.equal(workspacePayload.workspace.root, workspaceRoot);
     assert.equal(workspacePayload.workspace.searchableFileCount, 1);
     assert.equal(workspacePayload.workspace.unsupportedFileCount, 1);
     assert.ok(workspacePayload.workspace.exclusions.includes("generated"));
+    assert.equal(workspacePayload.workspace.index.indexMode, "persistent_disk");
+    assert.ok(workspacePayload.workspace.index.workspaceFingerprint);
+    assert.notEqual(workspacePayload.workspace.index.state, "rebuilding");
+    assert.ok(workspacePayload.workspace.index.lastBuiltAt);
 
     const readyHealthResult = await client.callTool({
       name: "get_health",
@@ -110,11 +147,18 @@ test("capabilities and health expose parser mode, languages, workspace root, and
     });
     const readyHealth = readyHealthResult.structuredContent as {
       status: string;
+      indexMode: string;
       supportedQueryTypes: string[];
-      workspace: { root: string | null; searchableFileCount: number; unsupportedFileCount: number };
+      workspace: {
+        root: string | null;
+        searchableFileCount: number;
+        unsupportedFileCount: number;
+        index: { workspaceFingerprint: string | null; indexMode: string };
+      };
       unsupportedFilesSample: Array<{ relativePath: string }>;
     };
     assert.equal(readyHealth.status, "ready");
+    assert.equal(readyHealth.indexMode, "persistent_disk");
     assert.deepEqual(readyHealth.supportedQueryTypes, [
       "file_symbols",
       "workspace_symbols",
@@ -126,6 +170,11 @@ test("capabilities and health expose parser mode, languages, workspace root, and
     assert.equal(readyHealth.workspace.root, workspaceRoot);
     assert.equal(readyHealth.workspace.searchableFileCount, 1);
     assert.equal(readyHealth.workspace.unsupportedFileCount, 1);
+    assert.equal(readyHealth.workspace.index.indexMode, "persistent_disk");
+    assert.equal(
+      readyHealth.workspace.index.workspaceFingerprint,
+      workspacePayload.workspace.index.workspaceFingerprint,
+    );
     assert.deepEqual(readyHealth.unsupportedFilesSample.map((file) => file.relativePath), ["README.md"]);
   } finally {
     await client.close().catch(() => undefined);

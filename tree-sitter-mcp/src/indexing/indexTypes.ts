@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+export const IndexModeSchema = z.literal("persistent_disk");
 export const FreshnessStateSchema = z.enum(["fresh", "refreshed", "rebuilding", "degraded"]);
 
 export const IndexedFileSemanticRecordSchema = z.object({
@@ -26,6 +27,7 @@ export const WorkspaceIndexManifestSchema = z.object({
 
 export const WorkspaceIndexSummarySchema = z.object({
   enabled: z.boolean(),
+  indexMode: IndexModeSchema,
   storageMode: z.literal("disk"),
   state: FreshnessStateSchema,
   workspaceFingerprint: z.string().nullable(),
@@ -35,14 +37,25 @@ export const WorkspaceIndexSummarySchema = z.object({
   lastRefreshedAt: z.string().nullable(),
 });
 
+export const SearchFreshnessSchema = z.object({
+  state: FreshnessStateSchema,
+  checkedAt: z.string(),
+  refreshedFiles: z.array(z.string()),
+  degradedFiles: z.array(z.string()),
+  workspaceFingerprint: z.string().nullable(),
+});
+
+export type IndexMode = z.infer<typeof IndexModeSchema>;
 export type FreshnessState = z.infer<typeof FreshnessStateSchema>;
 export type IndexedFileSemanticRecord = z.infer<typeof IndexedFileSemanticRecordSchema>;
 export type WorkspaceIndexManifest = z.infer<typeof WorkspaceIndexManifestSchema>;
 export type WorkspaceIndexSummary = z.infer<typeof WorkspaceIndexSummarySchema>;
+export type SearchFreshness = z.infer<typeof SearchFreshnessSchema>;
 
 export function createEmptyWorkspaceIndexSummary(): WorkspaceIndexSummary {
   return {
     enabled: true,
+    indexMode: "persistent_disk",
     storageMode: "disk",
     state: "rebuilding",
     workspaceFingerprint: null,
@@ -58,6 +71,7 @@ export function summarizeWorkspaceIndexManifest(
 ): WorkspaceIndexSummary {
   return {
     enabled: true,
+    indexMode: "persistent_disk",
     storageMode: "disk",
     state: manifest.state,
     workspaceFingerprint: manifest.workspaceFingerprint,
@@ -66,4 +80,8 @@ export function summarizeWorkspaceIndexManifest(
     lastBuiltAt: manifest.lastBuiltAt,
     lastRefreshedAt: manifest.lastRefreshedAt,
   };
+}
+
+export function createSearchFreshness(input: SearchFreshness): SearchFreshness {
+  return SearchFreshnessSchema.parse(input);
 }

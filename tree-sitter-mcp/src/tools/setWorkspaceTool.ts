@@ -58,20 +58,66 @@ export function registerSetWorkspaceTool(server: McpServer, context: ServerConte
           root,
           exclusions,
         });
-        await context.semanticIndex.ensureReady(context);
+        try {
+          await context.semanticIndex.ensureReady(context);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          const diagnostic = createDiagnostic({
+            code: "index_build_failed",
+            message: "The persistent index failed to finish building for this workspace.",
+            reason: message,
+            nextStep: "Retry set_workspace after fixing the underlying issue or clearing the persisted index directory.",
+            severity: "warning",
+            details: {
+              root,
+            },
+          });
+
+          const payload = {
+            workspace: summarizeWorkspace(context.workspace),
+            searchableFilesSample: context.workspace.searchableFiles.slice(0, 20),
+            unsupportedFilesSample: context.workspace.unsupportedFiles.slice(0, 20),
+            diagnostics: [diagnostic],
+          };
+
+          return {
+            isError: true,
+            content: [{ type: "text" as const, text: diagnostic.message }],
+            structuredContent: payload,
+          };
+        }
+
+        const diagnostics = [];
+        const lastLoadResult = context.semanticIndex.getLastLoadResult();
+        if (lastLoadResult?.status === "schema_mismatch") {
+          diagnostics.push(createDiagnostic({
+            code: "index_schema_mismatch",
+            message: "An older persisted index schema was discarded and rebuilt for this workspace.",
+            reason: `Expected schema ${lastLoadResult.expectedSchemaVersion} but found ${lastLoadResult.actualSchemaVersion}.`,
+            nextStep: "Reuse the rebuilt index for future searches or rerun set_workspace if you want to confirm the rebuilt snapshot.",
+            severity: "warning",
+            details: {
+              expectedSchemaVersion: lastLoadResult.expectedSchemaVersion,
+              actualSchemaVersion: lastLoadResult.actualSchemaVersion,
+              workspaceFingerprint: context.workspace.index.workspaceFingerprint,
+            },
+          }));
+        }
 
         const payload = {
           workspace: summarizeWorkspace(context.workspace),
           searchableFilesSample: context.workspace.searchableFiles.slice(0, 20),
           unsupportedFilesSample: context.workspace.unsupportedFiles.slice(0, 20),
-          diagnostics: [],
+          diagnostics,
         };
+        const lastBuiltAt = payload.workspace.index.lastBuiltAt;
+        const lastRefreshedAt = payload.workspace.index.lastRefreshedAt;
 
         return {
           content: [
             {
               type: "text" as const,
-              text: `Workspace set to ${root}. Discovered ${payload.workspace.searchableFileCount} supported files and ${payload.workspace.unsupportedFileCount} unsupported files.`,
+              text: `Workspace set to ${root}. Discovered ${payload.workspace.searchableFileCount} supported files and ${payload.workspace.unsupportedFileCount} unsupported files.${lastBuiltAt ? ` Index lastBuiltAt ${lastBuiltAt}.` : ""}${lastRefreshedAt ? ` lastRefreshedAt ${lastRefreshedAt}.` : ""}`,
             },
           ],
           structuredContent: payload,

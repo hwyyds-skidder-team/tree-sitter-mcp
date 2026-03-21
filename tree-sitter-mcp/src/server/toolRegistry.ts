@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { WorkspaceIndexSummarySchema } from "../indexing/indexTypes.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { registerGetCapabilitiesTool } from "../tools/getCapabilitiesTool.js";
 import { registerGetHealthTool } from "../tools/getHealthTool.js";
@@ -16,6 +17,7 @@ const BootstrapInfoSchema = z.object({
   transport: z.literal("stdio"),
   eagerIndexing: z.boolean(),
   parserMode: z.literal("on_demand"),
+  index: WorkspaceIndexSummarySchema,
 });
 
 function registerBootstrapInfoTool(server: McpServer, context: ServerContext): void {
@@ -37,8 +39,9 @@ function registerBootstrapInfoTool(server: McpServer, context: ServerContext): v
         name: context.config.name,
         version: context.config.version,
         transport: "stdio" as const,
-        eagerIndexing: false,
+        eagerIndexing: true,
         parserMode: context.parserMode,
+        index: context.semanticIndex.getSummary(),
       };
 
       return {

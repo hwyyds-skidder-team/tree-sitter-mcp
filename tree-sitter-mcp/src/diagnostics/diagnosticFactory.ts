@@ -20,6 +20,10 @@ export const DiagnosticCodeSchema = z.enum([
   "unsupported_file",
   "unsupported_language",
   "parse_failed",
+  "index_build_failed",
+  "index_refresh_failed",
+  "index_degraded",
+  "index_schema_mismatch",
   "definition_not_found",
   "reference_not_found",
 ]);
