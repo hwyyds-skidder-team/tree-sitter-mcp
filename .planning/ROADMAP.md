@@ -7,7 +7,7 @@
 
 ## Current Status
 
-Phases 04 and 05 are complete and verified, and Phase 06-01 has now locked the relationship-view contract. The next milestone step is Phase 06-02 traversal and payload shaping on top of the verified persistent-index and multi-workspace search foundation.
+Phases 04 and 05 are complete and verified, and Phase 06-02 now ships indexed relationship traversal plus the read-only relationship MCP tool. The next milestone step is Phase 06-03 end-to-end validation against realistic multi-workspace repositories.
 
 ## Overview
 
@@ -66,7 +66,7 @@ Plans:
 
 Plans:
 - [x] 06-01: Model relationship queries and schemas using existing definition/reference primitives.
-- [ ] 06-02: Implement relationship traversal, filtering, pagination, and workspace-aware payload shaping.
+- [x] 06-02: Implement relationship traversal, filtering, pagination, and workspace-aware payload shaping.
 - [ ] 06-03: Validate relationship and impact workflows against realistic multi-workspace repositories.
 
 ## Progress
@@ -78,7 +78,7 @@ Phases execute in numeric order: 4 → 5 → 6
 |-------|-----------|----------------|--------|-----------|
 | 4. Persistent Indexing and Query Freshness | v1.1 | 3/3 | Complete | 2026-03-21 |
 | 5. Multi-Workspace Search and Result Quality | v1.1 | 3/3 | Complete | 2026-03-21 |
-| 6. Relationship Views and Impact Discovery | v1.1 | 1/3 | In Progress | - |
+| 6. Relationship Views and Impact Discovery | v1.1 | 2/3 | In Progress | - |
 
 ---
 *For shipped milestone details, see `.planning/milestones/v1.0-ROADMAP.md`.*
