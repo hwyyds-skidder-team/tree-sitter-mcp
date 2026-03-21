@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Search Depth and Scale
 status: executing
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-03-21T08:41:52.127Z"
+stopped_at: Completed 05-02-PLAN.md
+last_updated: "2026-03-21T09:12:21Z"
 progress:
   total_phases: 3
   completed_phases: 0
   total_plans: 6
-  completed_plans: 2
+  completed_plans: 3
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-21)
 ## Current Position
 
 Phase: 05 (multi-workspace-search-and-result-quality) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 
 ## Decisions Made
 
@@ -52,6 +52,8 @@ Plan: 2 of 3
 - [Phase 05]: Treat root as shorthand for an ordered roots list while keeping workspace.root as the legacy first-root view.
 - [Phase 05]: Persist and refresh indexes per real workspace root, then expose one aggregate index summary for backward-compatible callers.
 - [Phase 05]: Use workspaceRoot ownership plus { workspaceRoot, relativePath } record identity so duplicate paths stay distinct across repositories.
+- [Phase 05]: Normalize `workspaceRoots` filtering centrally so definition and reference backends preserve the same path/language/kind narrowing behavior across multiple roots.
+- [Phase 05]: Require explicit `workspaceRoot` for ambiguous follow-up navigation instead of guessing the first configured root. — This keeps `list_file_symbols` and `resolve_definition` precise when two repositories share the same relative path or symbol name.
 
 ## Pending Todos
 
@@ -67,9 +69,10 @@ None.
 |-------|------|----------|-------|-------|-----------|
 | 04 | 01 | 3 min | 3 | 9 | 2026-03-21 |
 | 05 | 01 | 22 min | 3 | 12 | 2026-03-21 |
+| 05 | 02 | 16 min | 3 | 14 | 2026-03-21 |
 
 ## Session
 
-**Last Date:** 2026-03-21T08:41:52.124Z
-**Stopped At:** Completed 05-01-PLAN.md
-**Resume File:** .planning/phases/05-multi-workspace-search-and-result-quality/05-02-PLAN.md
+**Last Date:** 2026-03-21T09:12:21Z
+**Stopped At:** Completed 05-02-PLAN.md
+**Resume File:** .planning/phases/05-multi-workspace-search-and-result-quality/05-03-PLAN.md
