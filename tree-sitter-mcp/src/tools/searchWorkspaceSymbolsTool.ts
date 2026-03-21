@@ -12,12 +12,14 @@ import {
   SymbolMatchSchema,
   type SymbolMatch,
 } from "../queries/queryCatalog.js";
+import { createWorkspaceBreakdown, WorkspaceBreakdownSchema } from "../results/workspaceBreakdown.js";
 import { compareWorkspaceAwareMatches, scoreNameMatch } from "../results/searchRanking.js";
 import type { ServerContext } from "../server/serverContext.js";
 import { createDefaultFreshness, createFreshnessDiagnostics } from "./indexFreshness.js";
 
 const SearchWorkspaceSymbolsInputSchema = z.object({
   query: z.string().min(1),
+  workspaceRoots: z.array(z.string()).optional(),
   language: z.string().min(1).optional(),
   pathPrefix: z.string().min(1).optional(),
   symbolKinds: z.array(SymbolKindSchema).optional(),
@@ -26,26 +28,23 @@ const SearchWorkspaceSymbolsInputSchema = z.object({
 
 const SearchWorkspaceSymbolsOutputSchema = z.object({
   workspaceRoot: z.string().nullable(),
+  workspaceRoots: z.array(z.string()),
   query: z.string(),
   searchedFiles: z.number().int().nonnegative(),
   matchedFiles: z.number().int().nonnegative(),
   truncated: z.boolean(),
   filters: z.object({
+    workspaceRoots: z.array(z.string()).optional(),
     language: z.string().nullable(),
     pathPrefix: z.string().nullable(),
     symbolKinds: z.array(SymbolKindSchema),
     limit: z.number().int().positive(),
   }),
   results: z.array(SymbolMatchSchema),
+  workspaceBreakdown: z.array(WorkspaceBreakdownSchema),
   freshness: SearchFreshnessSchema,
   diagnostics: z.array(DiagnosticSchema),
 });
-
-const IMMEDIATE_ERROR_CODES = new Set([
-  "unsupported_language",
-  "workspace_path_out_of_scope",
-  "workspace_root_invalid",
-]);
 
 export function registerSearchWorkspaceSymbolsTool(server: McpServer, context: ServerContext): void {
   server.registerTool(
@@ -68,6 +67,7 @@ export function registerSearchWorkspaceSymbolsTool(server: McpServer, context: S
 
       if (!context.workspace.root) {
         const filters = {
+          workspaceRoots: undefined,
           language: input.language ?? null,
           pathPrefix: input.pathPrefix ?? null,
           symbolKinds: input.symbolKinds ?? [],
@@ -85,12 +85,14 @@ export function registerSearchWorkspaceSymbolsTool(server: McpServer, context: S
           content: [{ type: "text" as const, text: diagnostic.message }],
           structuredContent: {
             workspaceRoot: null,
+            workspaceRoots: [],
             query: input.query,
             searchedFiles: 0,
             matchedFiles: 0,
             truncated: false,
             filters,
             results: [],
+            workspaceBreakdown: [],
             freshness: createDefaultFreshness(context.workspace.index),
             diagnostics: [diagnostic],
           },
@@ -102,13 +104,16 @@ export function registerSearchWorkspaceSymbolsTool(server: McpServer, context: S
         configuredRoots: context.workspace.roots,
         languageRegistry: context.languageRegistry,
         input: {
+          workspaceRoots: input.workspaceRoots,
           language: input.language,
           pathPrefix: input.pathPrefix,
           symbolKinds: input.symbolKinds,
         },
       });
+      const selectedWorkspaceRoots = normalizedFiltersResult.filters.workspaceRoots ?? context.workspace.roots;
 
       const filters = {
+        workspaceRoots: normalizedFiltersResult.filters.workspaceRoots,
         language: normalizedFiltersResult.filters.language,
         pathPrefix: normalizedFiltersResult.filters.pathPrefix,
         symbolKinds: normalizedFiltersResult.filters.symbolKinds,
@@ -123,12 +128,14 @@ export function registerSearchWorkspaceSymbolsTool(server: McpServer, context: S
           content: [{ type: "text" as const, text: diagnostic.message }],
           structuredContent: {
             workspaceRoot: context.workspace.root,
+            workspaceRoots: selectedWorkspaceRoots,
             query: input.query,
             searchedFiles: 0,
             matchedFiles: 0,
             truncated: false,
             filters,
             results: [],
+            workspaceBreakdown: createWorkspaceBreakdown(selectedWorkspaceRoots, [], []),
             freshness: createDefaultFreshness(context.workspace.index),
             diagnostics: [diagnostic],
           },
@@ -176,27 +183,34 @@ export function registerSearchWorkspaceSymbolsTool(server: McpServer, context: S
         results.map((symbol) => JSON.stringify([symbol.workspaceRoot, symbol.relativePath])),
       );
       const truncated = matches.length > limit;
+      const workspaceBreakdown = createWorkspaceBreakdown(selectedWorkspaceRoots, searchableFiles, results);
       const payload = {
         workspaceRoot: context.workspace.root,
+        workspaceRoots: selectedWorkspaceRoots,
         query: input.query,
         searchedFiles,
         matchedFiles: uniqueFiles.size,
         truncated,
         filters,
         results,
+        workspaceBreakdown,
         freshness: freshIndex.freshness,
         diagnostics: [...diagnostics, ...createFreshnessDiagnostics(freshIndex.freshness)],
       };
 
       return {
-        ...(diagnostics.some((diagnostic) => IMMEDIATE_ERROR_CODES.has(diagnostic.code)) && searchedFiles === 0
-          ? { isError: true }
-          : {}),
         content: [
           {
             type: "text" as const,
             text: describeWorkspaceSymbolSearchText(
-              `Found ${results.length} symbol matches across ${uniqueFiles.size} files after searching ${searchedFiles} files.`,
+              formatWorkspaceSearchText({
+                resultCount: results.length,
+                matchedFiles: uniqueFiles.size,
+                searchedFiles,
+                selectedWorkspaceCount: selectedWorkspaceRoots.length,
+                configuredWorkspaceCount: context.workspace.roots.length,
+                noun: "symbol matches",
+              }),
               payload.freshness,
             ),
           },
@@ -205,6 +219,30 @@ export function registerSearchWorkspaceSymbolsTool(server: McpServer, context: S
       };
     },
   );
+}
+
+function formatWorkspaceSearchText(options: {
+  resultCount: number;
+  matchedFiles: number;
+  searchedFiles: number;
+  selectedWorkspaceCount: number;
+  configuredWorkspaceCount: number;
+  noun: string;
+}): string {
+  const {
+    resultCount,
+    matchedFiles,
+    searchedFiles,
+    selectedWorkspaceCount,
+    configuredWorkspaceCount,
+    noun,
+  } = options;
+
+  if (configuredWorkspaceCount > 1) {
+    return `Found ${resultCount} ${noun} across ${matchedFiles} files after searching ${searchedFiles} files in ${selectedWorkspaceCount} of ${configuredWorkspaceCount} configured workspaces.`;
+  }
+
+  return `Found ${resultCount} ${noun} across ${matchedFiles} files after searching ${searchedFiles} files.`;
 }
 
 function describeWorkspaceSymbolSearchText(
