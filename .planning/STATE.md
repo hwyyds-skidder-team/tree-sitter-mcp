@@ -2,11 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Search Depth and Scale
-current_plan: 3
-status: ready_for_verification
-stopped_at: Completed 06-03-PLAN.md
-last_updated: "2026-03-21T15:48:29.858Z"
-last_activity: 2026-03-21
+status: milestone_complete
+stopped_at: Archived v1.1 milestone
+last_updated: "2026-03-22T05:56:34.587765Z"
+last_activity: 2026-03-22
 progress:
   total_phases: 3
   completed_phases: 3
@@ -18,19 +17,18 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-21)
+See: .planning/PROJECT.md (updated 2026-03-22)
 
 **Core Value:** An AI agent can quickly find the right code symbols, definitions, references, and related source regions in a workspace without relying on brittle grep-style text search.
-**Current Focus:** v1.1 milestone verification after completing Phase 06
+**Current Focus:** Planning the next milestone after archiving v1.1
 
 ## Current Position
 
-Phase: 06 (relationship-views-and-impact-discovery) — COMPLETE
-Plan: 3 of 3
-Current Plan: 3
-Total Plans in Phase: 3
-Status: Ready for verification
-Last Activity: 2026-03-21
+Milestone: v1.1 (Search Depth and Scale) — ARCHIVED
+Phase: None active
+Plan: 0 of 0
+Status: Milestone complete
+Last Activity: 2026-03-22
 
 ## Decisions Made
 
@@ -39,36 +37,16 @@ Last Activity: 2026-03-21
 | Init | Start with a standalone MCP server in `tree-sitter-mcp` | Matches the requested deliverable and keeps the integration reusable across MCP clients |
 | Init | Prefer stdio-first local transport for v1 | Best fit for local AI-agent workflows and lowest initial deployment complexity |
 | Init | Use on-demand parsing instead of a persistent index | Reduced setup complexity for the first release, then expanded once repeated-query performance mattered |
-| Phase 1 | Enforce deterministic workspace exclusions before semantic queries | Keeps dependency, vendored, and generated paths out of user-facing results |
-| Phase 1 | Expose capabilities and health as explicit MCP tools | Makes the server debuggable before deeper semantic workflows exist |
-| Phase 1 | Return structured diagnostics for unsupported files and parse failures | Prevents silent skips and keeps agent workflows actionable |
-| Phase 2 | Keep definition search layered on top of the Phase 1 parser and workspace snapshot | Preserves the local-first architecture while adding definition workflows |
-| Phase 2 | Normalize definition payloads through a dedicated schema and shared filter layer | Keeps tool-facing metadata and narrowing semantics consistent across languages |
-| Phase 2 | Expose `search_definitions` and `resolve_definition` as read-only stdio tools | Completes the user-facing definition workflow without introducing writes |
-| Phase 3 | Keep `search_references` as a thin MCP adapter over the shared backend | Preserves one source of truth for diagnostics, context shaping, and pagination |
-| Init | Refocus v1.1 on search improvements before transport expansion | User priority is stronger search, not more connection options |
-| Init | Pair persistent indexing with multi-workspace search in v1.1 | Both features need shared workspace state and freshness tracking |
-| Init | Start relationship views with direct semantic links instead of whole-program graphs | Reuse the existing definition/reference pipeline before heavier analysis |
+| Init | Refocus v1.1 on search improvements before transport expansion | User priority stayed on stronger search rather than more connection options |
+| Phase 04 | Fingerprint each workspace and persist semantic records with explicit freshness state | Enables fast repeated queries without hiding staleness |
+| Phase 05 | Federate search across ordered workspace roots with stable attribution and narrowing | Keeps large cross-repo result sets usable |
+| Phase 06 | Start relationship retrieval with direct links plus one extra impact hop | Reuse the existing search foundation before heavier graph analysis |
+| Milestone | Archive v1.1 after 9/9 plans and 10/10 requirements completed despite no standalone audit artifact | Completion accepted as shipped with known process debt |
 
-- [Phase 04]: Fingerprint each workspace from normalized root, exclusions, and schema version so persisted indexes invalidate cleanly on configuration changes.
-- [Phase 04]: Build persisted semantic records with hashes, file metadata, definitions, references, and diagnostics so repeated semantic searches reuse one stored source of truth.
-- [Phase 04]: Refresh only changed files before indexed search answers, and degrade broken changed files instead of serving stale records.
-- [Phase 04]: Surface index mode, workspace fingerprint, refreshed files, and degraded files through bootstrap, metadata tools, and search payloads.
-- [Phase 05]: Treat root as shorthand for an ordered roots list while keeping workspace.root as the legacy first-root view.
-- [Phase 05]: Persist and refresh indexes per real workspace root, then expose one aggregate index summary for backward-compatible callers.
-- [Phase 05]: Use workspaceRoot ownership plus { workspaceRoot, relativePath } record identity so duplicate paths stay distinct across repositories.
-- [Phase 05]: Normalize `workspaceRoots` filtering centrally so definition and reference backends preserve the same path/language/kind narrowing behavior across multiple roots.
-- [Phase 05]: Apply one shared exact/prefix/contains ranking helper before truncation so federated symbol and definition searches stay deterministic across roots.
-- [Phase 05]: Expose additive `workspaceRoots` and `workspaceBreakdown` metadata on broad search tools while keeping single-workspace text compact for existing callers.
-- [Phase 06]: Reuse DefinitionMatchSchema and ReferenceMatchSchema inside relationship edges so workspace attribution and evidence stay aligned with existing search payloads.
-- [Phase 06]: Constrain relationship maxDepth to 1..2 and default it to 1 so Phase 6 stays read-only and neighborhood-scoped.
-- [Phase 06]: Normalize relationshipKinds into canonical enum order so future traversal output remains deterministic regardless of caller input order.
-- [Phase 06]: Incoming relationship edges reuse indexed searchReferences evidence and resolve enclosing owners in-file before emitting related symbols.
-- [Phase 06]: Relationship traversal inspects fresh indexed references inside resolved definition ranges and breadth-first expands at most one additional hop with deterministic dedupe.
-- [Phase 06]: Health now mirrors capabilities by advertising relationship_view and get_relationship_view alongside workspace breakdown and freshness metadata patterns.
-- [Phase 06]: Exercise relationship discovery through the compiled stdio server with temp repositories so Phase 6 is proven end-to-end instead of only through backend helpers.
-- [Phase 06]: Prefer same-file and same-workspace definition resolution before global fallback when mapping outgoing relationship references so duplicate symbol names stay attributable across roots.
-- [Phase 06]: Capture fresh-index state before target resolution inside getRelationshipView so refreshed and degraded metadata survives multi-step relationship workflows.
+- [Phase 04]: Persistent indexing, targeted refresh, and degraded-file exclusion are now part of the shipped read-only search contract.
+- [Phase 05]: Multi-workspace discovery, workspace-aware narrowing, deterministic federated ranking, and workspace breakdown metadata are now shipped.
+- [Phase 06]: Relationship views, one-hop impact inspection, federated relationship disambiguation, and relationship freshness propagation are now shipped.
+- [Next]: Define the next milestone with fresh requirements rather than extending v1.1 further.
 
 ## Pending Todos
 
@@ -94,6 +72,6 @@ None.
 
 ## Session
 
-**Last Date:** 2026-03-21T15:48:29.854Z
-**Stopped At:** Completed 06-03-PLAN.md
-**Resume File:** None
+**Last Date:** 2026-03-22
+**Stopped At:** Archived v1.1 milestone
+**Resume File:** Start the next cycle with `$gsd-new-milestone`
