@@ -36,18 +36,33 @@ export const RelationshipFilterSchema = z.object({
 });
 
 export const RelationshipViewRequestSchema = z.object({
-  symbol: RelationshipSeedSchema.optional(),
-  lookup: RelationshipSeedSchema.optional(),
-  workspaceRoots: z.array(z.string().min(1)).min(1).optional(),
-  language: z.string().min(1).optional(),
-  relationshipKinds: z.array(RelationshipKindSchema).optional(),
-  maxDepth: z.number().int().min(1).max(2).optional(),
-  limit: z.number().int().positive().max(200).optional(),
-  offset: z.number().int().nonnegative().optional(),
-}).refine((request) => request.symbol || request.lookup, {
+  symbol: RelationshipSeedSchema.optional().describe(
+    "Relationship seed descriptor. Provide symbol or lookup.",
+  ),
+  lookup: RelationshipSeedSchema.optional().describe(
+    "Relationship seed lookup. Provide symbol or lookup.",
+  ),
+  workspaceRoots: z.array(z.string().min(1)).min(1).optional().describe(
+    "Optional subset of configured workspace roots to search.",
+  ),
+  language: z.string().min(1).optional().describe("Optional language filter."),
+  relationshipKinds: z.array(RelationshipKindSchema).optional().describe(
+    "Relationship kinds to include in the response.",
+  ),
+  maxDepth: z.number().int().min(1).max(2).optional().describe(
+    "Relationship traversal depth. Supports one extra impact hop at depth 2.",
+  ),
+  limit: z.number().int().positive().max(200).optional().describe("Maximum number of edges to return."),
+  offset: z.number().int().nonnegative().optional().describe("Pagination offset for relationship edges."),
+});
+
+export const ValidatedRelationshipViewRequestSchema = RelationshipViewRequestSchema.refine(
+  (request) => request.symbol || request.lookup,
+  {
   message: "Provide a relationship seed via symbol or lookup.",
   path: ["symbol"],
-});
+  },
+);
 
 export const RelationshipViewResultSchema = z.object({
   target: DefinitionMatchSchema,

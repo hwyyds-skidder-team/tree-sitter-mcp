@@ -10,10 +10,12 @@ import {
 import {
   RelationshipEdgeSchema,
   RelationshipViewRequestSchema,
+  ValidatedRelationshipViewRequestSchema,
 } from "../relationships/relationshipTypes.js";
 import { DefinitionMatchSchema } from "../definitions/definitionTypes.js";
 import type { ServerContext } from "../server/serverContext.js";
 import { createFreshnessDiagnostics } from "./indexFreshness.js";
+import { validateToolInput } from "./validateToolInput.js";
 
 const GetRelationshipViewOutputSchema = z.object({
   workspaceRoot: z.string().nullable(),
@@ -45,7 +47,12 @@ export function registerGetRelationshipViewTool(server: McpServer, context: Serv
       },
     },
     async (input) => {
-      const result = await getRelationshipView(context, input);
+      const validatedInput = validateToolInput(
+        "get_relationship_view",
+        ValidatedRelationshipViewRequestSchema,
+        input,
+      );
+      const result = await getRelationshipView(context, validatedInput);
       const selectedWorkspaceRoots = result.filters.workspaceRoots ?? context.workspace.roots;
       const workspaceBreakdown = createWorkspaceBreakdown(
         selectedWorkspaceRoots,

@@ -12,12 +12,19 @@ import {
   WorkspaceSummarySchema,
   UnsupportedFileRecordSchema,
 } from "../workspace/workspaceState.js";
+import { validateToolInput } from "./validateToolInput.js";
 
 const SetWorkspaceInputSchema = z.object({
-  root: z.string().min(1).optional(),
-  roots: z.array(z.string().min(1)).min(1).optional(),
-  additionalExclusions: z.array(z.string().min(1)).optional(),
-}).superRefine((input, ctx) => {
+  root: z.string().min(1).optional().describe("Single workspace root. Provide either root or roots."),
+  roots: z.array(z.string().min(1)).min(1).optional().describe(
+    "Ordered workspace roots. Provide either root or roots.",
+  ),
+  additionalExclusions: z.array(z.string().min(1)).optional().describe(
+    "Extra exclusion patterns to merge with the default workspace exclusions.",
+  ),
+});
+
+const ValidatedSetWorkspaceInputSchema = SetWorkspaceInputSchema.superRefine((input, ctx) => {
   if (!input.root && !input.roots?.length) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -50,14 +57,20 @@ export function registerSetWorkspaceTool(server: McpServer, context: ServerConte
       },
     },
     async (input) => {
+      const validatedInput = validateToolInput(
+        "set_workspace",
+        ValidatedSetWorkspaceInputSchema,
+        input,
+      );
+
       try {
         const roots = await resolveWorkspaceRoots({
-          root: input.root,
-          roots: input.roots,
+          root: validatedInput.root,
+          roots: validatedInput.roots,
         });
         const exclusions = mergeExclusions(
           context.config.defaultExclusions,
-          input.additionalExclusions ?? [],
+          validatedInput.additionalExclusions ?? [],
         );
         const discovery = await discoverConfiguredWorkspaces(
           roots,
@@ -154,8 +167,8 @@ export function registerSetWorkspaceTool(server: McpServer, context: ServerConte
           reason: message,
           nextStep: "Pass one or more existing directory paths to set_workspace and retry.",
           details: {
-            requestedRoot: input.root ?? null,
-            requestedRoots: input.roots?.join(", ") ?? null,
+            requestedRoot: validatedInput.root ?? null,
+            requestedRoots: validatedInput.roots?.join(", ") ?? null,
           },
         });
 

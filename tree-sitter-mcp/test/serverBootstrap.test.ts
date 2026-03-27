@@ -44,9 +44,43 @@ test("compiled server bootstraps over stdio and lists tools", async () => {
     assert.ok(toolNames.has("resolve_definition"));
     assert.ok(toolNames.has("search_references"));
     assert.ok(toolNames.has("get_relationship_view"));
+    const setWorkspaceTool = listed.tools.find((tool) => tool.name === "set_workspace");
+    assert.equal(setWorkspaceTool?.name, "set_workspace");
+    assert.deepEqual(Object.keys(setWorkspaceTool?.inputSchema.properties ?? {}).sort(), [
+      "additionalExclusions",
+      "root",
+      "roots",
+    ]);
     const relationshipTool = listed.tools.find((tool) => tool.name === "get_relationship_view");
     assert.equal(relationshipTool?.name, "get_relationship_view");
     assert.match(relationshipTool?.description ?? "", /read-only impact hop/i);
+    assert.deepEqual(Object.keys(relationshipTool?.inputSchema.properties ?? {}).sort(), [
+      "language",
+      "limit",
+      "lookup",
+      "maxDepth",
+      "offset",
+      "relationshipKinds",
+      "symbol",
+      "workspaceRoots",
+    ]);
+
+    const invalidWorkspaceCall = await client.callTool({
+      name: "set_workspace",
+      arguments: {},
+    });
+    assert.equal(invalidWorkspaceCall.isError, true);
+    assert.match(invalidWorkspaceCall.content[0]?.type === "text" ? invalidWorkspaceCall.content[0].text : "", /Either root or roots is required/);
+
+    const invalidRelationshipCall = await client.callTool({
+      name: "get_relationship_view",
+      arguments: {},
+    });
+    assert.equal(invalidRelationshipCall.isError, true);
+    assert.match(
+      invalidRelationshipCall.content[0]?.type === "text" ? invalidRelationshipCall.content[0].text : "",
+      /Provide a relationship seed via symbol or lookup/,
+    );
 
     const callResult = await client.callTool({
       name: "tree_sitter_get_server_info",
