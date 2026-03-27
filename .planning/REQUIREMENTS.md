@@ -43,20 +43,20 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DEPS-01 | TBD | Pending |
-| DEPS-02 | TBD | Pending |
-| DEPS-03 | TBD | Pending |
-| DEPS-04 | TBD | Pending |
-| IMPA-01 | TBD | Pending |
-| IMPA-02 | TBD | Pending |
-| IMPA-03 | TBD | Pending |
-| IMPA-04 | TBD | Pending |
+| DEPS-01 | Phase 7 | Pending |
+| DEPS-02 | Phase 7 | Pending |
+| DEPS-03 | Phase 7 | Pending |
+| DEPS-04 | Phase 7 | Pending |
+| IMPA-01 | Phase 8 | Pending |
+| IMPA-02 | Phase 8 | Pending |
+| IMPA-03 | Phase 8 | Pending |
+| IMPA-04 | Phase 8 | Pending |
 
 **Coverage:**
 - v1.2 requirements: 8 total
-- Mapped to phases: 0
-- Unmapped: 8
+- Mapped to phases: 8
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-27*
-*Last updated: 2026-03-27 after initial definition*
+*Last updated: 2026-03-27 after roadmap creation*
