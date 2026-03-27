@@ -185,3 +185,42 @@ test("getDependencyAnalysis preserves workspace attribution and relationshipKind
     }
   }
 });
+
+test("getDependencyAnalysis filters out paths that require excluded relationshipKinds", async () => {
+  const workspaceRoot = await createDependencyWorkspaceFixture();
+  const context = await createPreparedContext(workspaceRoot);
+
+  const result = await getDependencyAnalysis(context, {
+    lookup: {
+      name: "start",
+      languageId: "typescript",
+      workspaceRoot,
+      kind: "function",
+    },
+    maxDepth: 3,
+    relationshipKinds: ["outgoing_call"],
+  });
+
+  assert.equal(result.results.some((entry) => entry.symbol.name === "refSink"), false);
+  assert.ok(result.results.every((entry) => entry.path.every((step) => step.relationshipKind === "outgoing_call")));
+});
+
+test("getDependencyAnalysis handles cycles without revisiting duplicate targets or the seed", async () => {
+  const workspaceRoot = await createDependencyWorkspaceFixture();
+  const context = await createPreparedContext(workspaceRoot);
+
+  const result = await getDependencyAnalysis(context, {
+    lookup: {
+      name: "start",
+      languageId: "typescript",
+      workspaceRoot,
+      kind: "function",
+    },
+    maxDepth: 4,
+  });
+
+  assert.equal(result.results.filter((entry) => entry.symbol.name === "cycleA").length, 1);
+  assert.equal(result.results.filter((entry) => entry.symbol.name === "cycleB").length, 1);
+  assert.equal(result.results.some((entry) => entry.symbol.name === "start"), false);
+  assert.ok(result.results.every((entry) => entry.depth <= 4));
+});
