@@ -8,9 +8,9 @@
 ### Dependency Analysis
 
 - [ ] **DEPS-01**: Agent can request multi-hop dependency analysis for a symbol and receive structured incoming/outgoing relationships beyond the current one-hop model.
-- [ ] **DEPS-02**: Agent can bound dependency analysis by traversal depth and relationship kinds so results stay scoped and usable.
-- [ ] **DEPS-03**: Agent can inspect an explanation path that shows how a returned symbol is connected to the requested seed.
-- [ ] **DEPS-04**: Agent receives stable workspace/file attribution for analyzed symbols and relationships so results stay actionable in local repos.
+- [x] **DEPS-02**: Agent can bound dependency analysis by traversal depth and relationship kinds so results stay scoped and usable.
+- [x] **DEPS-03**: Agent can inspect an explanation path that shows how a returned symbol is connected to the requested seed.
+- [x] **DEPS-04**: Agent receives stable workspace/file attribution for analyzed symbols and relationships so results stay actionable in local repos.
 
 ### Impact Analysis
 
@@ -44,9 +44,9 @@
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | DEPS-01 | Phase 7 | Pending |
-| DEPS-02 | Phase 7 | Pending |
-| DEPS-03 | Phase 7 | Pending |
-| DEPS-04 | Phase 7 | Pending |
+| DEPS-02 | Phase 7 | Complete |
+| DEPS-03 | Phase 7 | Complete |
+| DEPS-04 | Phase 7 | Complete |
 | IMPA-01 | Phase 8 | Pending |
 | IMPA-02 | Phase 8 | Pending |
 | IMPA-03 | Phase 8 | Pending |

@@ -37,7 +37,7 @@
 **Plans**: 3 plans
 
 Plans:
-- [ ] 07-01-PLAN.md — Define additive dependency-analysis contracts, filter normalization, and diagnostics.
+- [x] 07-01-PLAN.md — Define additive dependency-analysis contracts, filter normalization, and diagnostics.
 - [ ] 07-02-PLAN.md — Implement bounded multi-hop traversal and explanation-path backend on shared relationship primitives.
 - [ ] 07-03-PLAN.md — Wire the dependency-analysis MCP tool and validate stdio, federated, and freshness behavior.
 
@@ -56,7 +56,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 7. Dependency Traversal and Path Explanation | 0/3 | Not started | - |
+| 7. Dependency Traversal and Path Explanation | 1/3 | In Progress | - |
 | 8. Impact Prioritization and Confidence Summaries | 0/0 | Not started | - |
 
 ---
