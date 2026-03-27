@@ -13,7 +13,7 @@ An AI agent can quickly find the right code symbols, definitions, references, an
 - **Shipped milestones:** `v1.0 Semantic Search` archived/tagged on 2026-03-21; `v1.1 Search Depth and Scale` archived/tagged on 2026-03-22.
 - **Product surface:** standalone MCP server with capability/health inspection, persistent index reuse, freshness-aware payloads, multi-workspace symbol/definition/reference search, deterministic federated ranking, workspace breakdown metadata, and read-only relationship views with one extra impact hop.
 - **Codebase shape:** TypeScript package under `tree-sitter-mcp/` with regression coverage across bootstrap, indexing, workspace discovery, multi-root search, restart reuse, degraded refresh handling, and relationship retrieval.
-- **Planning status:** no active milestone is defined; the next step is to create fresh requirements and roadmap scope for the next milestone.
+- **Planning status:** `v1.2 Advanced Analysis` is active and currently being translated into milestone-scoped requirements and roadmap phases.
 
 ## Current Milestone: v1.2 Advanced Analysis
 
