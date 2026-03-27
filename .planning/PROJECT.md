@@ -15,11 +15,16 @@ An AI agent can quickly find the right code symbols, definitions, references, an
 - **Codebase shape:** TypeScript package under `tree-sitter-mcp/` with regression coverage across bootstrap, indexing, workspace discovery, multi-root search, restart reuse, degraded refresh handling, and relationship retrieval.
 - **Planning status:** no active milestone is defined; the next step is to create fresh requirements and roadmap scope for the next milestone.
 
-## Next Milestone Goals
+## Current Milestone: v1.2 Advanced Analysis
 
-- Decide whether the next milestone should prioritize HTTP transport, deeper relationship retrieval, or the first safe write workflows.
-- Preserve the read-only, agent-first payload quality established in v1.1 while widening transport or retrieval depth.
-- Tighten archive/summary metadata conventions so future milestone automation can extract accomplishments without manual cleanup.
+**Goal:** Deepen the server from semantic search into higher-value analysis so an AI agent can understand dependency structure and likely change impact around a symbol.
+
+**Target features:**
+- Deeper dependency and relationship analysis beyond the current direct-links-plus-one-hop model.
+- Impact analysis that summarizes likely blast radius for a symbol or change target.
+- Path explanations that show why one symbol, file, or module influences another.
+- Confidence and uncertainty metadata so agents can distinguish reliable links from weaker inferences.
+- High-signal analysis summaries that remain easy for MCP clients to consume.
 
 ## Requirements
 
@@ -34,7 +39,9 @@ An AI agent can quickly find the right code symbols, definitions, references, an
 
 ### Active
 
-- None yet — define with the next milestone.
+- [ ] Deepen symbol analysis from shallow relationship lookup into richer dependency traversal.
+- [ ] Help agents estimate likely impact before making or proposing code changes.
+- [ ] Surface structured explanations and confidence signals instead of raw relationship edges alone.
 
 ### Out of Scope
 
@@ -68,5 +75,22 @@ An AI agent can quickly find the right code symbols, definitions, references, an
 | Start relationship views with direct semantic links instead of whole-program graphs | Reuse the definition/reference pipeline before attempting heavier analysis | ✓ Shipped in v1.1 |
 | Prefer same-file and same-workspace relationship resolution before global fallback | Prevent duplicate names across roots from leaking into the wrong relationship view | ✓ Validated in v1.1 |
 
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd-transition`):
+1. Requirements invalidated? -> Move to Out of Scope with reason
+2. Requirements validated? -> Move to Validated with phase reference
+3. New requirements emerged? -> Add to Active
+4. Decisions to log? -> Add to Key Decisions
+5. "What This Is" still accurate? -> Update if drifted
+
+**After each milestone** (via `/gsd-complete-milestone`):
+1. Full review of all sections
+2. Core Value check - still the right priority?
+3. Audit Out of Scope - reasons still valid?
+4. Update Context with current state
+
 ---
-*Last updated: 2026-03-22 after v1.1 milestone archival*
+*Last updated: 2026-03-27 after starting v1.2 milestone*

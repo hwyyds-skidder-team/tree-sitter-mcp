@@ -1,34 +1,34 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: Search Depth and Scale
-status: milestone_complete
-stopped_at: Archived v1.1 milestone
-last_updated: "2026-03-22T05:56:34.587765Z"
-last_activity: 2026-03-22
+milestone: v1.2
+milestone_name: Advanced Analysis
+status: defining_requirements
+stopped_at: Gathering milestone scope
+last_updated: "2026-03-27T13:52:47Z"
+last_activity: 2026-03-27
 progress:
-  total_phases: 3
-  completed_phases: 3
-  total_plans: 9
-  completed_plans: 9
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-22)
+See: .planning/PROJECT.md (updated 2026-03-27)
 
 **Core Value:** An AI agent can quickly find the right code symbols, definitions, references, and related source regions in a workspace without relying on brittle grep-style text search.
-**Current Focus:** Planning the next milestone after archiving v1.1
+**Current Focus:** Defining v1.2 Advanced Analysis requirements
 
 ## Current Position
 
-Milestone: v1.1 (Search Depth and Scale) — ARCHIVED
-Phase: None active
-Plan: 0 of 0
-Status: Milestone complete
-Last Activity: 2026-03-22
+Milestone: v1.2 (Advanced Analysis)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last Activity: 2026-03-27
 
 ## Decisions Made
 
@@ -46,7 +46,7 @@ Last Activity: 2026-03-22
 - [Phase 04]: Persistent indexing, targeted refresh, and degraded-file exclusion are now part of the shipped read-only search contract.
 - [Phase 05]: Multi-workspace discovery, workspace-aware narrowing, deterministic federated ranking, and workspace breakdown metadata are now shipped.
 - [Phase 06]: Relationship views, one-hop impact inspection, federated relationship disambiguation, and relationship freshness propagation are now shipped.
-- [Next]: Define the next milestone with fresh requirements rather than extending v1.1 further.
+- [Current]: Shape v1.2 around deeper dependency analysis, impact estimation, path explanation, and confidence-aware results.
 
 ## Pending Todos
 
@@ -72,6 +72,6 @@ None.
 
 ## Session
 
-**Last Date:** 2026-03-22
-**Stopped At:** Archived v1.1 milestone
-**Resume File:** Start the next cycle with `$gsd-new-milestone`
+**Last Date:** 2026-03-27
+**Stopped At:** Gathering v1.2 requirements
+**Resume File:** Continue the milestone-definition workflow, then move to `/gsd-plan-phase [N]`
