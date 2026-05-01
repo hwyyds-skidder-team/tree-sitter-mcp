@@ -1,3 +1,5 @@
+import C from "tree-sitter-c";
+import Cpp from "tree-sitter-cpp";
 import JavaScript from "tree-sitter-javascript";
 import Python from "tree-sitter-python";
 import Rust from "tree-sitter-rust";
@@ -13,6 +15,24 @@ export function registerBuiltinGrammars(registry: LanguageRegistry): void {
     ...listDefinitionQueryTypes(),
     ...listReferenceQueryTypes(),
   ])];
+
+  registry.register({
+    id: "c",
+    displayName: "C",
+    grammarName: C.name,
+    extensions: [".c", ".h"],
+    parserLanguage: C,
+    queryTypes,
+  });
+
+  registry.register({
+    id: "cpp",
+    displayName: "C++",
+    grammarName: Cpp.name,
+    extensions: [".cpp", ".cc", ".cxx", ".hpp", ".hh", ".hxx", ".h++"],
+    parserLanguage: Cpp,
+    queryTypes,
+  });
 
   registry.register({
     id: "javascript",

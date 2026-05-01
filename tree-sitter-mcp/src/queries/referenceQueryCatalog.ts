@@ -23,6 +23,19 @@ interface CaptureReferenceNodesInput {
 const REFERENCE_QUERY_TYPES = ["reference_search", "call_site_search"] as const;
 
 const REFERENCE_QUERY_DEFINITIONS: Record<string, ReferenceQueryDefinition> = {
+  c: {
+    source: `[
+      (identifier)
+      (type_identifier)
+    ] @reference.name`,
+  },
+  cpp: {
+    source: `[
+      (identifier)
+      (type_identifier)
+      (namespace_identifier)
+    ] @reference.name`,
+  },
   javascript: {
     source: `[
       (identifier)

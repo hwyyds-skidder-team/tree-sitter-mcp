@@ -42,6 +42,60 @@ interface ExtractSymbolsInput {
 const SUPPORTED_QUERY_TYPES = ["file_symbols", "workspace_symbols"] as const;
 
 const QUERY_DEFINITIONS: Record<string, QueryDefinition> = {
+  c: {
+    source: `[
+      (function_definition declarator: (function_declarator declarator: (identifier) @symbol.name)) @symbol.definition
+      (function_definition declarator: (pointer_declarator declarator: (function_declarator declarator: (identifier) @symbol.name))) @symbol.definition
+      (struct_specifier name: (type_identifier) @symbol.name) @symbol.definition
+      (enum_specifier name: (type_identifier) @symbol.name) @symbol.definition
+      (union_specifier name: (type_identifier) @symbol.name) @symbol.definition
+      (type_definition declarator: (type_identifier) @symbol.name) @symbol.definition
+    ]`,
+    classify(definitionNode, nameNode) {
+      switch (definitionNode.type) {
+        case "struct_specifier":
+        case "enum_specifier":
+        case "union_specifier":
+          return "class";
+        case "type_definition":
+          return "variable";
+        case "function_definition":
+          return "function";
+        default:
+          return "function";
+      }
+    },
+  },
+  cpp: {
+    source: `[
+      (function_definition declarator: (function_declarator declarator: (identifier) @symbol.name)) @symbol.definition
+      (function_definition declarator: (pointer_declarator declarator: (function_declarator declarator: (identifier) @symbol.name))) @symbol.definition
+      (function_definition declarator: (reference_declarator declarator: (function_declarator declarator: (identifier) @symbol.name))) @symbol.definition
+      (class_specifier name: (type_identifier) @symbol.name) @symbol.definition
+      (struct_specifier name: (type_identifier) @symbol.name) @symbol.definition
+      (enum_specifier name: (type_identifier) @symbol.name) @symbol.definition
+      (namespace_definition name: (namespace_identifier) @symbol.name) @symbol.definition
+      (type_definition declarator: (type_identifier) @symbol.name) @symbol.definition
+      (declaration declarator: (function_declarator declarator: (identifier) @symbol.name)) @symbol.definition
+    ]`,
+    classify(definitionNode, nameNode) {
+      switch (definitionNode.type) {
+        case "class_specifier":
+        case "struct_specifier":
+        case "enum_specifier":
+          return "class";
+        case "namespace_definition":
+          return "variable";
+        case "type_definition":
+          return "variable";
+        case "function_definition":
+        case "declaration":
+          return hasAncestor(definitionNode, ["class_specifier"]) ? "method" : "function";
+        default:
+          return "function";
+      }
+    },
+  },
   javascript: {
     source: `[
       (function_declaration name: (identifier) @symbol.name) @symbol.definition

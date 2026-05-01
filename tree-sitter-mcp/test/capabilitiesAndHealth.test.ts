@@ -76,6 +76,8 @@ test("capabilities and health expose parser mode, languages, workspace root, and
     assert.equal(capabilities.parserMode, "on_demand");
     assert.equal(capabilities.indexMode, "persistent_disk");
     assert.deepEqual(capabilities.supportedLanguages.map((language) => language.id), [
+      "c",
+      "cpp",
       "javascript",
       "python",
       "rust",
