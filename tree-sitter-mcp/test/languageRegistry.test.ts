@@ -10,6 +10,9 @@ test("builtin grammar registration is deterministic and extension-aware", () => 
   assert.deepEqual(registry.list().map((language) => language.id), [
     "c",
     "cpp",
+    "csharp",
+    "go",
+    "java",
     "javascript",
     "python",
     "rust",
@@ -21,6 +24,9 @@ test("builtin grammar registration is deterministic and extension-aware", () => 
   assert.equal(registry.getByFilePath("example.h")?.id, "c");
   assert.equal(registry.getByFilePath("example.cpp")?.id, "cpp");
   assert.equal(registry.getByFilePath("example.hpp")?.id, "cpp");
+  assert.equal(registry.getByFilePath("example.cs")?.id, "csharp");
+  assert.equal(registry.getByFilePath("example.go")?.id, "go");
+  assert.equal(registry.getByFilePath("example.java")?.id, "java");
   assert.equal(registry.getByFilePath("example.ts")?.id, "typescript");
   assert.equal(registry.getByFilePath("example.tsx")?.id, "tsx");
   assert.equal(registry.getByFilePath("example.py")?.id, "python");

@@ -1,5 +1,8 @@
 import C from "tree-sitter-c";
 import Cpp from "tree-sitter-cpp";
+import CSharp from "tree-sitter-c-sharp";
+import Go from "tree-sitter-go";
+import Java from "tree-sitter-java";
 import JavaScript from "tree-sitter-javascript";
 import Python from "tree-sitter-python";
 import Rust from "tree-sitter-rust";
@@ -31,6 +34,33 @@ export function registerBuiltinGrammars(registry: LanguageRegistry): void {
     grammarName: Cpp.name,
     extensions: [".cpp", ".cc", ".cxx", ".hpp", ".hh", ".hxx", ".h++"],
     parserLanguage: Cpp,
+    queryTypes,
+  });
+
+  registry.register({
+    id: "csharp",
+    displayName: "C#",
+    grammarName: CSharp.name,
+    extensions: [".cs"],
+    parserLanguage: CSharp,
+    queryTypes,
+  });
+
+  registry.register({
+    id: "go",
+    displayName: "Go",
+    grammarName: Go.name,
+    extensions: [".go"],
+    parserLanguage: Go,
+    queryTypes,
+  });
+
+  registry.register({
+    id: "java",
+    displayName: "Java",
+    grammarName: Java.name,
+    extensions: [".java"],
+    parserLanguage: Java,
     queryTypes,
   });
 

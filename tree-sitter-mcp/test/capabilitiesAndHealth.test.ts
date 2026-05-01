@@ -78,6 +78,9 @@ test("capabilities and health expose parser mode, languages, workspace root, and
     assert.deepEqual(capabilities.supportedLanguages.map((language) => language.id), [
       "c",
       "cpp",
+      "csharp",
+      "go",
+      "java",
       "javascript",
       "python",
       "rust",

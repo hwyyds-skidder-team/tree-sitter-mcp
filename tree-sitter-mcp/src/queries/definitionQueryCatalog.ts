@@ -77,6 +77,88 @@ const DEFINITION_QUERY_DEFINITIONS: Record<string, DefinitionCatalogEntry> = {
       }
     },
   },
+  csharp: {
+    source: `[
+      (method_declaration name: (identifier) @symbol.name) @symbol.definition
+      (constructor_declaration name: (identifier) @symbol.name) @symbol.definition
+      (class_declaration name: (identifier) @symbol.name) @symbol.definition
+      (struct_declaration name: (identifier) @symbol.name) @symbol.definition
+      (interface_declaration name: (identifier) @symbol.name) @symbol.definition
+      (enum_declaration name: (identifier) @symbol.name) @symbol.definition
+      (namespace_declaration name: (identifier) @symbol.name) @symbol.definition
+      (delegate_declaration name: (identifier) @symbol.name) @symbol.definition
+      (record_declaration name: (identifier) @symbol.name) @symbol.definition
+    ]`,
+    classify(definitionNode, nameNode) {
+      switch (definitionNode.type) {
+        case "class_declaration":
+        case "struct_declaration":
+        case "enum_declaration":
+        case "record_declaration":
+          return "class";
+        case "interface_declaration":
+          return "interface";
+        case "namespace_declaration":
+          return "variable";
+        case "delegate_declaration":
+          return "variable";
+        case "method_declaration":
+        case "constructor_declaration":
+          return hasAncestor(definitionNode, ["class_declaration", "struct_declaration"]) ? "method" : "function";
+        default:
+          return "function";
+      }
+    },
+  },
+  go: {
+    source: `[
+      (function_declaration name: (identifier) @symbol.name) @symbol.definition
+      (method_declaration name: (field_identifier) @symbol.name) @symbol.definition
+      (type_declaration (type_spec name: (type_identifier) @symbol.name)) @symbol.definition
+    ]`,
+    classify(definitionNode, nameNode) {
+      switch (definitionNode.type) {
+        case "method_declaration":
+          return "method";
+        case "type_declaration":
+          return "class";
+        case "function_declaration":
+          return "function";
+        default:
+          return "function";
+      }
+    },
+  },
+  java: {
+    source: `[
+      (method_declaration name: (identifier) @symbol.name) @symbol.definition
+      (constructor_declaration name: (identifier) @symbol.name) @symbol.definition
+      (class_declaration name: (identifier) @symbol.name) @symbol.definition
+      (interface_declaration name: (identifier) @symbol.name) @symbol.definition
+      (enum_declaration name: (identifier) @symbol.name) @symbol.definition
+      (enum_constant name: (identifier) @symbol.name) @symbol.definition
+      (annotation_type_declaration name: (identifier) @symbol.name) @symbol.definition
+      (record_declaration name: (identifier) @symbol.name) @symbol.definition
+    ]`,
+    classify(definitionNode, nameNode) {
+      switch (definitionNode.type) {
+        case "class_declaration":
+        case "enum_declaration":
+        case "record_declaration":
+          return "class";
+        case "interface_declaration":
+        case "annotation_type_declaration":
+          return "interface";
+        case "enum_constant":
+          return "variable";
+        case "method_declaration":
+        case "constructor_declaration":
+          return hasAncestor(definitionNode, ["class_declaration", "enum_declaration"]) ? "method" : "function";
+        default:
+          return "function";
+      }
+    },
+  },
   javascript: {
     source: `[
       (function_declaration name: (identifier) @symbol.name) @symbol.definition

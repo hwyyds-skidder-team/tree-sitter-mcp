@@ -36,6 +36,19 @@ const REFERENCE_QUERY_DEFINITIONS: Record<string, ReferenceQueryDefinition> = {
       (namespace_identifier)
     ] @reference.name`,
   },
+  csharp: {
+    source: `(identifier) @reference.name`,
+  },
+  go: {
+    source: `[
+      (identifier)
+      (type_identifier)
+      (field_identifier)
+    ] @reference.name`,
+  },
+  java: {
+    source: `(identifier) @reference.name`,
+  },
   javascript: {
     source: `[
       (identifier)
