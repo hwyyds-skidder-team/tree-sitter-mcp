@@ -1,5 +1,6 @@
 import type { Diagnostic } from "../diagnostics/diagnosticFactory.js";
 import type { ServerContext } from "../server/serverContext.js";
+import { processBatch } from "../parsing/parallelParser.js";
 import type { WorkspaceIndexSummary } from "./indexTypes.js";
 import {
   collectIndexedFileSemantics,
@@ -19,18 +20,33 @@ export async function buildWorkspaceIndex(
 ): Promise<BuildWorkspaceIndexResult> {
   const targetRoots = resolveTargetWorkspaceRoots(context, workspaceRoots);
   const targetRootSet = new Set(targetRoots);
-  const records: PersistedIndexedFileRecord[] = [];
-  const diagnostics: Diagnostic[] = [];
 
-  for (const file of context.workspace.searchableFiles) {
+  const filesToProcess = context.workspace.searchableFiles.filter((file) => {
     const workspaceRoot = resolveIndexedRecordWorkspaceRoot(file);
-    if (!targetRootSet.has(workspaceRoot)) {
-      continue;
-    }
+    return targetRootSet.has(workspaceRoot);
+  });
 
-    const record = await collectIndexedFileSemantics(context, file);
-    records.push(record);
+  const { results: records, errors } = await processBatch(
+    filesToProcess,
+    async (file) => {
+      const record = await collectIndexedFileSemantics(context, file);
+      return record;
+    },
+    4,
+  );
+
+  const diagnostics: Diagnostic[] = [];
+  for (const record of records) {
     diagnostics.push(...record.diagnostics);
+  }
+  for (const { error } of errors) {
+    diagnostics.push({
+      code: "parse_failed",
+      message: error.message,
+      reason: "File parsing failed during index build.",
+      nextStep: "Check the file for syntax errors.",
+      severity: "warning",
+    });
   }
 
   sortWorkspaceRecords(records, targetRoots);
