@@ -20,6 +20,7 @@ export const DiagnosticCodeSchema = z.enum([
   "unsupported_file",
   "unsupported_language",
   "relationship_depth_invalid",
+  "relationship_budget_reached",
   "dependency_depth_invalid",
   "parse_failed",
   "index_build_failed",

@@ -14,7 +14,6 @@ import {
   filterReferenceSearchableFiles,
   normalizeReferenceFilters,
 } from "../references/referenceFilters.js";
-import { searchReferences } from "../references/searchReferences.js";
 import type { ReferenceMatch } from "../references/referenceTypes.js";
 import type { ServerContext } from "../server/serverContext.js";
 import { DEFAULT_RELATIONSHIP_KINDS } from "./relationshipFilters.js";
@@ -22,8 +21,6 @@ import {
   type RelationshipEdge,
   type RelationshipKind,
 } from "./relationshipTypes.js";
-
-const INTERNAL_REFERENCE_PAGE_LIMIT = 200;
 
 export type SearchableRelationshipFile = Pick<
   IndexedFileSemanticRecord,
@@ -46,6 +43,8 @@ export interface CollectDirectRelationshipEdgesOptions {
   freshnesses: SearchFreshness[];
   resolveCache?: Map<string, Promise<DefinitionMatch | null>>;
   ownerResolveCache?: Map<string, Promise<DefinitionMatch | null>>;
+  referenceSearchCache?: Map<string, Promise<ReferenceMatch[]>>;
+  definitionNames?: ReadonlySet<string>;
 }
 
 export async function collectDirectRelationshipEdges(
@@ -55,9 +54,12 @@ export async function collectDirectRelationshipEdges(
 ): Promise<RelationshipEdge[]> {
   const resolveCache = options.resolveCache ?? new Map<string, Promise<DefinitionMatch | null>>();
   const ownerResolveCache = options.ownerResolveCache ?? new Map<string, Promise<DefinitionMatch | null>>();
+  const definitionNames = options.definitionNames ?? createDefinitionNameSet(options.freshIndex.records);
+  const shouldCollectIncoming = includesRelationshipDirection(options.filters, "incoming");
+  const shouldCollectOutgoing = includesRelationshipDirection(options.filters, "outgoing");
   const [incomingEdges, outgoingEdges] = await Promise.all([
-    collectIncomingEdges(context, frontier, options, ownerResolveCache),
-    collectOutgoingEdges(context, frontier, options, resolveCache),
+    shouldCollectIncoming ? collectIncomingEdges(context, frontier, options, ownerResolveCache, definitionNames) : Promise.resolve([]),
+    shouldCollectOutgoing ? collectOutgoingEdges(context, frontier, options, resolveCache, definitionNames) : Promise.resolve([]),
   ]);
 
   return [...incomingEdges, ...outgoingEdges];
@@ -134,38 +136,23 @@ async function collectIncomingEdges(
   frontier: DefinitionMatch,
   options: CollectDirectRelationshipEdgesOptions,
   ownerResolveCache: Map<string, Promise<DefinitionMatch | null>>,
+  definitionNames: ReadonlySet<string>,
 ): Promise<RelationshipEdge[]> {
-  const referenceFiltersResult = normalizeReferenceFilters({
-    workspaceRoot: context.workspace.root ?? frontier.workspaceRoot,
-    configuredRoots: context.workspace.roots,
-    languageRegistry: context.languageRegistry,
-    input: {
-      workspaceRoots: options.filters.workspaceRoots,
-      language: options.filters.language,
-    },
-  });
-  if (referenceFiltersResult.diagnostic) {
-    options.diagnostics.push(referenceFiltersResult.diagnostic);
-    return [];
-  }
-
-  const compatibleLanguageIds = getCompatibleLanguageIds(frontier.languageId);
-  const searchableFiles = filterReferenceSearchableFiles(
-    options.freshIndex.records.filter((file) => compatibleLanguageIds.has(file.languageId)),
-    referenceFiltersResult.filters,
-  );
-  trackSearchableFiles(options.searchableFiles, searchableFiles);
-
   const references = await collectAllReferences(context, frontier, options.filters, options);
   const edges: RelationshipEdge[] = [];
 
   for (const reference of references) {
+    const relationshipKind = relationshipKindForReference("incoming", reference.referenceKind);
+    if (!options.filters.relationshipKinds.includes(relationshipKind)) {
+      continue;
+    }
+
     if (!reference.enclosingContext?.name) {
       options.diagnostics.push(createSkippedOwnerDiagnostic(frontier, reference));
       continue;
     }
 
-    const owner = await resolveOwnerDefinition(context, reference, ownerResolveCache);
+    const owner = await resolveOwnerDefinition(context, reference, ownerResolveCache, definitionNames);
     if (!owner) {
       options.diagnostics.push(createUnresolvedRelationshipDiagnostic(frontier, reference, "incoming"));
       continue;
@@ -177,7 +164,7 @@ async function collectIncomingEdges(
     }
 
     const edge = createRelationshipEdge(
-      reference.referenceKind === "call" ? "incoming_call" : "incoming_reference",
+      relationshipKind,
       options.hopCount,
       owner,
       reference,
@@ -198,6 +185,7 @@ async function collectOutgoingEdges(
   frontier: DefinitionMatch,
   options: CollectDirectRelationshipEdgesOptions,
   resolveCache: Map<string, Promise<DefinitionMatch | null>>,
+  definitionNames: ReadonlySet<string>,
 ): Promise<RelationshipEdge[]> {
   const frontierRecord = options.freshIndex.records.find((record) =>
     record.workspaceRoot === frontier.workspaceRoot && record.relativePath === frontier.relativePath);
@@ -213,7 +201,12 @@ async function collectOutgoingEdges(
   const edges: RelationshipEdge[] = [];
 
   for (const reference of references) {
-    const relatedDefinition = await resolveReferencedDefinition(context, reference, resolveCache);
+    const relationshipKind = relationshipKindForReference("outgoing", reference.referenceKind);
+    if (!options.filters.relationshipKinds.includes(relationshipKind)) {
+      continue;
+    }
+
+    const relatedDefinition = await resolveReferencedDefinition(context, reference, resolveCache, definitionNames);
     if (!relatedDefinition) {
       options.diagnostics.push(createUnresolvedRelationshipDiagnostic(frontier, reference, "outgoing"));
       continue;
@@ -225,7 +218,7 @@ async function collectOutgoingEdges(
     }
 
     const edge = createRelationshipEdge(
-      reference.referenceKind === "call" ? "outgoing_call" : "outgoing_reference",
+      relationshipKind,
       options.hopCount,
       relatedDefinition,
       reference,
@@ -247,47 +240,104 @@ async function collectAllReferences(
   filters: RelationshipTraversalFilters,
   options: CollectDirectRelationshipEdgesOptions,
 ): Promise<ReferenceMatch[]> {
-  const results: ReferenceMatch[] = [];
-  let offset = 0;
-
-  while (true) {
-    const page = await searchReferences(context, {
-      lookup: {
-        name: frontier.name,
-        languageId: frontier.languageId,
-        workspaceRoot: frontier.workspaceRoot,
-        relativePath: frontier.relativePath,
-        kind: frontier.kind,
-      },
-      workspaceRoots: filters.workspaceRoots ? [...filters.workspaceRoots] : undefined,
-      language: filters.language ?? undefined,
-      limit: INTERNAL_REFERENCE_PAGE_LIMIT,
-      offset,
-      includeContext: true,
-    });
-
-    options.freshnesses.push(page.freshness);
-    options.diagnostics.push(
-      ...page.diagnostics.filter((diagnostic) => diagnostic.code !== "reference_not_found"),
-    );
-    results.push(...page.results);
-
-    if (!page.pagination.hasMore || page.pagination.nextOffset == null) {
-      break;
-    }
-
-    offset = page.pagination.nextOffset;
+  const referenceSearchCache = options.referenceSearchCache ?? new Map<string, Promise<ReferenceMatch[]>>();
+  const cacheKey = createReferenceSearchCacheKey(frontier, filters);
+  const cached = referenceSearchCache.get(cacheKey);
+  if (cached) {
+    return cached;
   }
 
-  return results;
+  const pending = collectAllReferencesUncached(context, frontier, filters, options);
+  referenceSearchCache.set(cacheKey, pending);
+  return pending;
+}
+
+async function collectAllReferencesUncached(
+  context: ServerContext,
+  frontier: DefinitionMatch,
+  filters: RelationshipTraversalFilters,
+  options: CollectDirectRelationshipEdgesOptions,
+): Promise<ReferenceMatch[]> {
+  const referenceFiltersResult = normalizeReferenceFilters({
+    workspaceRoot: context.workspace.root ?? frontier.workspaceRoot,
+    configuredRoots: context.workspace.roots,
+    languageRegistry: context.languageRegistry,
+    input: {
+      workspaceRoots: filters.workspaceRoots,
+      language: filters.language,
+    },
+  });
+
+  if (referenceFiltersResult.diagnostic) {
+    options.diagnostics.push(referenceFiltersResult.diagnostic);
+    return [];
+  }
+
+  const compatibleLanguageIds = getCompatibleLanguageIds(frontier.languageId);
+  const searchableFiles = filterReferenceSearchableFiles(
+    options.freshIndex.records
+      .filter((file) => compatibleLanguageIds.has(file.languageId))
+      .sort((left, right) => {
+        if (left.workspaceRoot !== right.workspaceRoot) {
+          return left.workspaceRoot.localeCompare(right.workspaceRoot);
+        }
+
+        return left.relativePath.localeCompare(right.relativePath);
+      }),
+    referenceFiltersResult.filters,
+  );
+  trackSearchableFiles(options.searchableFiles, searchableFiles);
+
+  const results: ReferenceMatch[] = [];
+
+  for (const file of searchableFiles) {
+    options.diagnostics.push(...file.diagnostics);
+
+    for (const reference of file.references) {
+      if (reference.name.toLowerCase() !== frontier.name.toLowerCase()) {
+        continue;
+      }
+
+      if (isDefinitionSelection(reference, frontier)) {
+        continue;
+      }
+
+      results.push({
+        ...reference,
+        symbolKind: frontier.kind,
+      });
+    }
+  }
+
+  return results.sort((left, right) => {
+    const workspaceComparison = compareWorkspaceRoots(left.workspaceRoot, right.workspaceRoot, context.workspace.roots);
+    if (workspaceComparison !== 0) {
+      return workspaceComparison;
+    }
+
+    if (left.relativePath !== right.relativePath) {
+      return left.relativePath.localeCompare(right.relativePath);
+    }
+
+    if (left.referenceKind !== right.referenceKind) {
+      return left.referenceKind === "call" ? -1 : 1;
+    }
+
+    return left.range.start.offset - right.range.start.offset;
+  });
 }
 
 async function resolveOwnerDefinition(
   context: ServerContext,
   reference: ReferenceMatch,
   ownerResolveCache: Map<string, Promise<DefinitionMatch | null>>,
+  definitionNames: ReadonlySet<string>,
 ): Promise<DefinitionMatch | null> {
   if (!reference.enclosingContext?.name) {
+    return null;
+  }
+
+  if (!definitionNames.has(reference.enclosingContext.name.toLowerCase())) {
     return null;
   }
 
@@ -321,7 +371,12 @@ async function resolveReferencedDefinition(
   context: ServerContext,
   reference: ReferenceMatch,
   resolveCache: Map<string, Promise<DefinitionMatch | null>>,
+  definitionNames: ReadonlySet<string>,
 ): Promise<DefinitionMatch | null> {
+  if (!definitionNames.has(reference.name.toLowerCase())) {
+    return null;
+  }
+
   const cacheKey = JSON.stringify([
     reference.name,
     reference.languageId,
@@ -406,6 +461,53 @@ function matchesRelationshipTraversalFilters(
   return true;
 }
 
+function includesRelationshipDirection(
+  filters: RelationshipTraversalFilters,
+  direction: "incoming" | "outgoing",
+): boolean {
+  return filters.relationshipKinds.some((relationshipKind) => relationshipKind.startsWith(direction));
+}
+
+function relationshipKindForReference(
+  direction: "incoming" | "outgoing",
+  referenceKind: ReferenceMatch["referenceKind"],
+): RelationshipKind {
+  if (direction === "incoming") {
+    return referenceKind === "call" ? "incoming_call" : "incoming_reference";
+  }
+
+  return referenceKind === "call" ? "outgoing_call" : "outgoing_reference";
+}
+
+function createReferenceSearchCacheKey(
+  frontier: DefinitionMatch,
+  filters: RelationshipTraversalFilters,
+): string {
+  return JSON.stringify([
+    frontier.name.toLowerCase(),
+    frontier.kind,
+    frontier.languageId,
+    frontier.workspaceRoot,
+    frontier.relativePath,
+    frontier.selectionRange.start.offset,
+    frontier.selectionRange.end.offset,
+    filters.workspaceRoots ?? null,
+    filters.language,
+  ]);
+}
+
+function createDefinitionNameSet(records: readonly IndexedFileSemanticRecord[]): Set<string> {
+  const definitionNames = new Set<string>();
+
+  for (const record of records) {
+    for (const definition of record.definitions) {
+      definitionNames.add(definition.name.toLowerCase());
+    }
+  }
+
+  return definitionNames;
+}
+
 function compareWorkspaceRoots(left: string, right: string, configuredRoots: readonly string[]): number {
   if (left === right) {
     return 0;
@@ -444,6 +546,13 @@ function trackSearchableFiles(
 function isReferenceWithinDefinition(reference: ReferenceMatch, definition: DefinitionMatch): boolean {
   return reference.selectionRange.start.offset >= definition.range.start.offset
     && reference.selectionRange.end.offset <= definition.range.end.offset;
+}
+
+function isDefinitionSelection(reference: ReferenceMatch, definition: DefinitionMatch): boolean {
+  return reference.workspaceRoot === definition.workspaceRoot
+    && reference.relativePath === definition.relativePath
+    && reference.selectionRange.start.offset === definition.selectionRange.start.offset
+    && reference.selectionRange.end.offset === definition.selectionRange.end.offset;
 }
 
 function isSameDefinition(left: DefinitionMatch, right: DefinitionMatch): boolean {

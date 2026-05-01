@@ -6,6 +6,7 @@ import {
   type SearchFreshness,
 } from "../indexing/indexTypes.js";
 import { type FreshRecordsResult } from "../indexing/semanticIndexCoordinator.js";
+import type { ReferenceMatch } from "../references/referenceTypes.js";
 import { paginateResults, type Pagination } from "../results/paginateResults.js";
 import type { ServerContext } from "../server/serverContext.js";
 import {
@@ -27,6 +28,10 @@ import {
 } from "./relationshipTypes.js";
 
 const MAX_DEPTH = 2;
+const MAX_SECOND_HOP_FRONTIER = 8;
+const MIN_TRAVERSAL_EDGE_BUDGET = 80;
+const MAX_TRAVERSAL_EDGE_BUDGET = 200;
+const TRAVERSAL_EDGE_LOOKAHEAD = 50;
 
 export interface GetRelationshipViewResult {
   target: DefinitionMatch | null;
@@ -47,6 +52,13 @@ interface TraversalState {
   freshnesses: SearchFreshness[];
   resolveCache: Map<string, Promise<DefinitionMatch | null>>;
   ownerResolveCache: Map<string, Promise<DefinitionMatch | null>>;
+  referenceSearchCache: Map<string, Promise<ReferenceMatch[]>>;
+}
+
+interface TraversalBudget {
+  edgeLimit: number;
+  secondHopFrontierLimit: number;
+  reached: boolean;
 }
 
 export async function getRelationshipView(
@@ -170,7 +182,9 @@ export async function getRelationshipView(
     freshnesses: [freshIndex.freshness],
     resolveCache: new Map<string, Promise<DefinitionMatch | null>>(),
     ownerResolveCache: new Map<string, Promise<DefinitionMatch | null>>(),
+    referenceSearchCache: new Map(),
   };
+  const traversalBudget = createTraversalBudget(normalizedFiltersResult.filters);
 
   const edges = await traverseRelationships(
     context,
@@ -178,7 +192,12 @@ export async function getRelationshipView(
     normalizedFiltersResult.filters,
     freshIndex,
     traversalState,
+    traversalBudget,
   );
+  if (traversalBudget.reached) {
+    traversalState.diagnostics.push(createTraversalBudgetDiagnostic(normalizedFiltersResult.filters, traversalBudget));
+  }
+
   const sortedEdges = sortRelationshipEdges(edges, context.workspace.roots);
   const pagedEdges = paginateResults(sortedEdges, {
     limit: normalizedFiltersResult.filters.limit,
@@ -211,17 +230,19 @@ async function traverseRelationships(
   filters: RelationshipFilters,
   freshIndex: FreshRecordsResult,
   state: TraversalState,
+  budget: TraversalBudget,
 ): Promise<RelationshipEdge[]> {
   const visitedDefinitions = new Set<string>([createDefinitionKey(target)]);
   const uniqueEdges = new Map<string, RelationshipEdge>();
   let depth = 1;
   let frontier = [target];
+  const maxDepth = Math.min(filters.maxDepth, MAX_DEPTH);
 
-  while (frontier.length > 0 && depth <= Math.min(filters.maxDepth, MAX_DEPTH)) {
+  while (frontier.length > 0 && depth <= maxDepth) {
     const nextFrontier: DefinitionMatch[] = [];
 
     for (const definition of frontier) {
-      const directEdges = await collectDirectRelationshipEdges(context, definition, {
+      const directEdges = sortRelationshipEdges(await collectDirectRelationshipEdges(context, definition, {
         hopCount: depth,
         filters,
         freshIndex,
@@ -230,9 +251,15 @@ async function traverseRelationships(
         freshnesses: state.freshnesses,
         resolveCache: state.resolveCache,
         ownerResolveCache: state.ownerResolveCache,
-      });
+        referenceSearchCache: state.referenceSearchCache,
+      }), context.workspace.roots);
 
       for (const edge of directEdges) {
+        if (uniqueEdges.size >= budget.edgeLimit) {
+          budget.reached = true;
+          return [...uniqueEdges.values()];
+        }
+
         const edgeKey = createRelationshipEdgeKey(edge);
         if (uniqueEdges.has(edgeKey)) {
           continue;
@@ -240,9 +267,13 @@ async function traverseRelationships(
 
         uniqueEdges.set(edgeKey, edge);
         const relatedDefinitionKey = createDefinitionKey(edge.relatedSymbol);
-        if (depth < Math.min(filters.maxDepth, MAX_DEPTH) && !visitedDefinitions.has(relatedDefinitionKey)) {
+        if (depth < maxDepth && !visitedDefinitions.has(relatedDefinitionKey)) {
           visitedDefinitions.add(relatedDefinitionKey);
-          nextFrontier.push(edge.relatedSymbol);
+          if (nextFrontier.length < budget.secondHopFrontierLimit) {
+            nextFrontier.push(edge.relatedSymbol);
+          } else {
+            budget.reached = true;
+          }
         }
       }
     }
@@ -252,6 +283,46 @@ async function traverseRelationships(
   }
 
   return [...uniqueEdges.values()];
+}
+
+function createTraversalBudget(filters: RelationshipFilters): TraversalBudget {
+  if (filters.maxDepth <= 1) {
+    return {
+      edgeLimit: Number.POSITIVE_INFINITY,
+      secondHopFrontierLimit: Number.POSITIVE_INFINITY,
+      reached: false,
+    };
+  }
+
+  const requestedWindowEnd = filters.offset + filters.limit;
+  return {
+    edgeLimit: Math.min(
+      MAX_TRAVERSAL_EDGE_BUDGET,
+      Math.max(MIN_TRAVERSAL_EDGE_BUDGET, requestedWindowEnd + TRAVERSAL_EDGE_LOOKAHEAD),
+    ),
+    secondHopFrontierLimit: MAX_SECOND_HOP_FRONTIER,
+    reached: false,
+  };
+}
+
+function createTraversalBudgetDiagnostic(
+  filters: RelationshipFilters,
+  budget: TraversalBudget,
+): Diagnostic {
+  return createDiagnostic({
+    code: "relationship_budget_reached",
+    severity: "warning",
+    message: "Relationship traversal stopped after reaching the internal breadth budget.",
+    reason: "Dense symbols can expand into a large second-hop neighborhood, so relationship views cap internal work before pagination.",
+    nextStep: "Narrow relationshipKinds, workspaceRoots, or language, or retry with maxDepth set to 1 for an exact direct-neighbor view.",
+    details: {
+      maxDepth: filters.maxDepth,
+      limit: filters.limit,
+      offset: filters.offset,
+      edgeLimit: Number.isFinite(budget.edgeLimit) ? budget.edgeLimit : null,
+      secondHopFrontierLimit: Number.isFinite(budget.secondHopFrontierLimit) ? budget.secondHopFrontierLimit : null,
+    },
+  });
 }
 
 function createFallbackRelationshipFilters(request: RelationshipViewRequest): RelationshipFilters {
