@@ -39,6 +39,9 @@ const TOOL_NAMES = [
   "resolve_definition",
   "search_references",
   "get_relationship_view",
+  "analyze_complexity",
+  "find_callers",
+  "get_symbol_context",
 ];
 
 export function registerGetHealthTool(server: McpServer, context: ServerContext): void {

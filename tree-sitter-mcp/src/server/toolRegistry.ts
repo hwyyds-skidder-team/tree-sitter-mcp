@@ -10,6 +10,9 @@ import { registerSearchReferencesTool } from "../tools/searchReferencesTool.js";
 import { registerSearchWorkspaceSymbolsTool } from "../tools/searchWorkspaceSymbolsTool.js";
 import { registerGetRelationshipViewTool } from "../tools/getRelationshipViewTool.js";
 import { registerSetWorkspaceTool } from "../tools/setWorkspaceTool.js";
+import { registerAnalyzeComplexityTool } from "../tools/analyzeComplexityTool.js";
+import { registerFindCallersTool } from "../tools/findCallersTool.js";
+import { registerGetSymbolContextTool } from "../tools/getSymbolContextTool.js";
 import type { ServerContext } from "./serverContext.js";
 
 const BootstrapInfoSchema = z.object({
@@ -69,4 +72,7 @@ export function registerTools(server: McpServer, context: ServerContext): void {
   registerResolveDefinitionTool(server, context);
   registerSearchReferencesTool(server, context);
   registerGetRelationshipViewTool(server, context);
+  registerAnalyzeComplexityTool(server, context);
+  registerFindCallersTool(server, context);
+  registerGetSymbolContextTool(server, context);
 }
