@@ -110,12 +110,12 @@ test("normalizeRelationshipFilters returns a diagnostic for unsupported language
     configuredRoots: [primaryRoot, secondaryRoot],
     languageRegistry: context.languageRegistry,
     input: {
-      language: "Rust",
+      language: "Go",
     },
   });
 
   assert.equal(unsupportedLanguageResult.diagnostic?.code, "unsupported_language");
-  assert.equal(unsupportedLanguageResult.filters.language, "rust");
+  assert.equal(unsupportedLanguageResult.filters.language, "go");
 });
 
 test("relationship maxDepth rejects values outside 1..2 and surfaces a normalization diagnostic", async () => {

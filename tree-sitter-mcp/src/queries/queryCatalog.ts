@@ -86,6 +86,36 @@ const QUERY_DEFINITIONS: Record<string, QueryDefinition> = {
       return classifySymbolKind(definitionNode, nameNode);
     },
   },
+  rust: {
+    source: `[
+      (function_item name: (identifier) @symbol.name) @symbol.definition
+      (struct_item name: (type_identifier) @symbol.name) @symbol.definition
+      (enum_item name: (type_identifier) @symbol.name) @symbol.definition
+      (trait_item name: (type_identifier) @symbol.name) @symbol.definition
+      (impl_item type: (type_identifier) @symbol.name) @symbol.definition
+      (mod_item name: (identifier) @symbol.name) @symbol.definition
+      (type_item name: (type_identifier) @symbol.name) @symbol.definition
+    ]`,
+    classify(definitionNode, nameNode) {
+      switch (definitionNode.type) {
+        case "struct_item":
+        case "enum_item":
+          return "class";
+        case "trait_item":
+          return "interface";
+        case "impl_item":
+          return "class";
+        case "mod_item":
+          return "variable";
+        case "type_item":
+          return "variable";
+        case "function_item":
+          return hasAncestor(definitionNode, ["impl_item"]) ? "method" : "function";
+        default:
+          return "function";
+      }
+    },
+  },
 };
 
 const queryCache = new Map<string, Parser.Query>();

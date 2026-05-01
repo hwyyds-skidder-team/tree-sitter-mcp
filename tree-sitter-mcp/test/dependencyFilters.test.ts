@@ -94,12 +94,12 @@ test("normalizeDependencyFilters returns diagnostics for unsupported workspace r
     configuredRoots: [primaryRoot, secondaryRoot],
     languageRegistry: context.languageRegistry,
     input: {
-      language: "Rust",
+      language: "Go",
     },
   });
 
   assert.equal(unsupportedLanguageResult.diagnostic?.code, "unsupported_language");
-  assert.equal(unsupportedLanguageResult.filters.language, "rust");
+  assert.equal(unsupportedLanguageResult.filters.language, "go");
 });
 
 test("dependency maxDepth rejects values outside 1..4 and surfaces dependency_depth_invalid", async () => {

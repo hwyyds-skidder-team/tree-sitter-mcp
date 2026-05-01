@@ -1,5 +1,6 @@
 import JavaScript from "tree-sitter-javascript";
 import Python from "tree-sitter-python";
+import Rust from "tree-sitter-rust";
 import TypeScript from "tree-sitter-typescript";
 import { listDefinitionQueryTypes } from "../queries/definitionQueryCatalog.js";
 import { listSupportedQueryTypes } from "../queries/queryCatalog.js";
@@ -28,6 +29,15 @@ export function registerBuiltinGrammars(registry: LanguageRegistry): void {
     grammarName: Python.name,
     extensions: [".py"],
     parserLanguage: Python,
+    queryTypes,
+  });
+
+  registry.register({
+    id: "rust",
+    displayName: "Rust",
+    grammarName: Rust.name,
+    extensions: [".rs"],
+    parserLanguage: Rust,
     queryTypes,
   });
 

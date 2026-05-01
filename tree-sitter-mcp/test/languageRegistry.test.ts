@@ -10,6 +10,7 @@ test("builtin grammar registration is deterministic and extension-aware", () => 
   assert.deepEqual(registry.list().map((language) => language.id), [
     "javascript",
     "python",
+    "rust",
     "tsx",
     "typescript",
   ]);
@@ -18,5 +19,6 @@ test("builtin grammar registration is deterministic and extension-aware", () => 
   assert.equal(registry.getByFilePath("example.tsx")?.id, "tsx");
   assert.equal(registry.getByFilePath("example.py")?.id, "python");
   assert.equal(registry.getByFilePath("example.js")?.id, "javascript");
+  assert.equal(registry.getByFilePath("example.rs")?.id, "rust");
   assert.equal(registry.getByFilePath("README.md"), undefined);
 });

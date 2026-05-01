@@ -46,6 +46,12 @@ const REFERENCE_QUERY_DEFINITIONS: Record<string, ReferenceQueryDefinition> = {
   python: {
     source: `(identifier) @reference.name`,
   },
+  rust: {
+    source: `[
+      (identifier)
+      (type_identifier)
+    ] @reference.name`,
+  },
 };
 
 export function listReferenceQueryTypes(): string[] {

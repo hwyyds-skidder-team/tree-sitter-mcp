@@ -78,6 +78,7 @@ test("capabilities and health expose parser mode, languages, workspace root, and
     assert.deepEqual(capabilities.supportedLanguages.map((language) => language.id), [
       "javascript",
       "python",
+      "rust",
       "tsx",
       "typescript",
     ]);
