@@ -13,6 +13,7 @@ import { registerSetWorkspaceTool } from "../tools/setWorkspaceTool.js";
 import { registerAnalyzeComplexityTool } from "../tools/analyzeComplexityTool.js";
 import { registerFindCallersTool } from "../tools/findCallersTool.js";
 import { registerGetSymbolContextTool } from "../tools/getSymbolContextTool.js";
+import { registerAnalyzeImpactTool } from "../tools/analyzeImpactTool.js";
 import type { ServerContext } from "./serverContext.js";
 
 const BootstrapInfoSchema = z.object({
@@ -75,4 +76,5 @@ export function registerTools(server: McpServer, context: ServerContext): void {
   registerAnalyzeComplexityTool(server, context);
   registerFindCallersTool(server, context);
   registerGetSymbolContextTool(server, context);
+  registerAnalyzeImpactTool(server, context);
 }

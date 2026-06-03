@@ -14,10 +14,10 @@
 
 ### Impact Analysis
 
-- [ ] **IMPA-01**: Agent can request impact analysis for a symbol and receive a summarized blast-radius view of likely affected code.
-- [ ] **IMPA-02**: Agent receives prioritized impact targets so the most important likely downstream effects appear first.
-- [ ] **IMPA-03**: Agent receives confidence metadata for each impact result so uncertain inferences are explicit.
-- [ ] **IMPA-04**: Agent receives a short reasoned summary explaining the main affected areas and why they were included.
+- [x] **IMPA-01**: Agent can request impact analysis for a symbol and receive a summarized blast-radius view of likely affected code.
+- [x] **IMPA-02**: Agent receives prioritized impact targets so the most important likely downstream effects appear first.
+- [x] **IMPA-03**: Agent receives confidence metadata for each impact result so uncertain inferences are explicit.
+- [x] **IMPA-04**: Agent receives a short reasoned summary explaining the main affected areas and why they were included.
 
 ## Future Requirements
 
@@ -47,10 +47,10 @@
 | DEPS-02 | Phase 7 | Complete |
 | DEPS-03 | Phase 7 | Complete |
 | DEPS-04 | Phase 7 | Complete |
-| IMPA-01 | Phase 8 | Pending |
-| IMPA-02 | Phase 8 | Pending |
-| IMPA-03 | Phase 8 | Pending |
-| IMPA-04 | Phase 8 | Pending |
+| IMPA-01 | Phase 8 | Complete |
+| IMPA-02 | Phase 8 | Complete |
+| IMPA-03 | Phase 8 | Complete |
+| IMPA-04 | Phase 8 | Complete |
 
 **Coverage:**
 - v1.2 requirements: 8 total

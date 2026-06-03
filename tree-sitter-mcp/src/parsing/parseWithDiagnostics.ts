@@ -7,6 +7,8 @@ import {
 } from "../diagnostics/diagnosticFactory.js";
 import type { RegisteredLanguage } from "../languages/languageRegistry.js";
 
+const TREE_SITTER_INPUT_CHUNK_SIZE = 16 * 1024;
+
 export interface ParseRequest {
   absolutePath: string;
   relativePath: string;
@@ -75,7 +77,7 @@ export async function parseWithDiagnostics(request: ParseRequest): Promise<Parse
   }
 
   try {
-    const tree = parser.parse(source);
+    const tree = parseSource(parser, source);
     const errorNode = findFirstErrorNode(tree.rootNode);
     if (tree.rootNode.hasError && errorNode) {
       return {
@@ -127,6 +129,10 @@ export async function parseWithDiagnostics(request: ParseRequest): Promise<Parse
       }),
     };
   }
+}
+
+function parseSource(parser: Parser, source: string): Parser.Tree {
+  return parser.parse((index) => source.slice(index, index + TREE_SITTER_INPUT_CHUNK_SIZE));
 }
 
 function findFirstErrorNode(node: Parser.SyntaxNode): Parser.SyntaxNode | null {

@@ -20,8 +20,8 @@
 
 ## Phases
 
-- [ ] **Phase 7: Dependency Traversal and Path Explanation** - Agents can explore bounded multi-hop dependency structure with explanation paths and stable attribution.
-- [ ] **Phase 8: Impact Prioritization and Confidence Summaries** - Agents can estimate likely blast radius with prioritized results, confidence signals, and short reasons.
+- [x] **Phase 7: Dependency Traversal and Path Explanation** - Agents can explore bounded multi-hop dependency structure with explanation paths and stable attribution.
+- [x] **Phase 8: Impact Prioritization and Confidence Summaries** - Agents can estimate likely blast radius with prioritized results, confidence signals, and short reasons.
 
 ## Phase Details
 
@@ -50,14 +50,17 @@ Plans:
   2. Agent can review prioritized impact targets so the most important likely downstream effects appear first.
   3. Agent can distinguish stronger and weaker impact inferences because each result includes explicit confidence metadata.
   4. Agent can read a short reasoned summary that explains the main affected areas and why they were included.
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [x] 08-01-PLAN.md — Implement impact analysis engine, confidence/severity scoring, blast-radius summarization, MCP tool wiring, and e2e validation.
 
 ## Progress Table
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 7. Dependency Traversal and Path Explanation | 1/3 | In Progress | - |
-| 8. Impact Prioritization and Confidence Summaries | 0/0 | Not started | - |
+| 8. Impact Prioritization and Confidence Summaries | 1/1 | Complete | - |
 
 ---
 *Archived milestone details remain in `.planning/milestones/v1.0-ROADMAP.md` and `.planning/milestones/v1.1-ROADMAP.md`.*

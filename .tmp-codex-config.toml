@@ -1,0 +1,89 @@
+model_provider = "custom"
+model = "gpt-5.4"
+disable_response_storage = true
+personality = "friendly"
+model_reasoning_effort = "xhigh"
+approvals_reviewer = "guardian_subagent"
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+
+[model_providers]
+
+[projects."/home/hwyyds/.codex"]
+trust_level = "trusted"
+[model_providers.custom]
+name = "custom"
+wire_api = "responses"
+requires_openai_auth = true
+base_url = "https://gptcode.top/v1"
+
+[projects."/data/source/tree-sitter-mcp"]
+trust_level = "trusted"
+
+[projects."/data/source/llvm-obf"]
+trust_level = "trusted"
+
+[projects."/home/hwyyds"]
+trust_level = "trusted"
+
+[projects."/home/hwyyds/Downloads/根目录_1_20260413151625772/3.6套原创主题测评卷/主题二   测评卷"]
+trust_level = "trusted"
+
+[projects."/data/source/web-test"]
+trust_level = "trusted"
+
+[projects."/data/source/Gomoku"]
+trust_level = "trusted"
+
+[projects."/data/source/js-obf"]
+trust_level = "trusted"
+
+[projects."/data/source/web-pan"]
+trust_level = "trusted"
+
+[projects."/data/source/shit"]
+trust_level = "trusted"
+
+[projects."/home/hwyyds/.local/share/nvim"]
+trust_level = "trusted"
+
+[projects."/data/source/decompier"]
+trust_level = "trusted"
+
+[projects."/home/hwyyds/Downloads"]
+trust_level = "trusted"
+
+[projects."/home/hwyyds/.claude"]
+trust_level = "trusted"
+
+[projects."/home/hwyyds/.opencode/agents"]
+trust_level = "trusted"
+
+[projects."/home/hwyyds/.config/nvim"]
+trust_level = "trusted"
+
+[projects."/data/source/rust-learn"]
+trust_level = "trusted"
+
+[projects."/data/source/python-obf"]
+trust_level = "trusted"
+
+[projects."/data/source"]
+trust_level = "trusted"
+
+[projects."/data/source/football"]
+trust_level = "trusted"
+
+[projects."/data/source/cc-haha"]
+trust_level = "trusted"
+
+[projects."/data/source/ZeroShell"]
+trust_level = "trusted"
+
+[projects."/data/source/CodeContextEngine"]
+trust_level = "trusted"
+
+[features]
+js_repl = true
+guardian_approval = true
+prevent_idle_sleep = true

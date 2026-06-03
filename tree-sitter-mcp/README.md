@@ -32,6 +32,7 @@ The server runs over stdio and is intended to be launched by an MCP client. Afte
 - `search_definitions` - search workspace definitions with language/path/kind filters
 - `resolve_definition` - resolve one discovered symbol or direct lookup request to a definition
 - `search_references` - search references or call sites for a resolved symbol with context and pagination metadata
+- `analyze_impact` - estimate the blast radius of changing a symbol with prioritized, confidence-aware impact targets, severity scores, and a reasoned summary of likely affected code
 
 ## MCP launch flow
 
